@@ -1,9 +1,0 @@
-[submodule "3rd-party/spdlog"]
-	path = 3rd-party/spdlog
-	url = https://github.com/gabime/spdlog.git
-[submodule "3rd-party/chip8-test-rom"]
-	path = 3rd-party/chip8-test-rom
-	url = https://github.com/corax89/chip8-test-rom.git
-[submodule "3rd-party/fmt"]
-	path = 3rd-party/fmt
-	url = https://github.com/fmtlib/fmt.git
