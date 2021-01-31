@@ -8,11 +8,11 @@ FetchContent_Declare(
     )
 FetchContent_MakeAvailable(googletest)
 
-# FetchContent_Declare(
-#     chip8-test-rom
-#     GIT_REPOSITORY https://github.com/corax89/chip8-test-rom.git
-#     )
-# FetchContent_MakeAvailable(chip8-test-rom)
+FetchContent_Declare(
+    chip8-test-rom
+    GIT_REPOSITORY https://github.com/corax89/chip8-test-rom.git
+    )
+FetchContent_MakeAvailable(chip8-test-rom)
 
 # https://cliutils.gitlab.io/modern-cmake/chapters/testing/googletest.html
 macro(package_add_test TESTNAME)
