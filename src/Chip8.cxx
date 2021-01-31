@@ -398,7 +398,7 @@ void Chip8::op_shr(void)
 void Chip8::op_subn(void)
 {
     m_V[0xF] = static_cast<uint8_t>(m_V[m_y] > m_V[m_x]);
-    m_V[m_y] -= m_V[m_x];
+    m_V[m_x] = m_V[m_y] - m_V[m_x];
 }
 //
 //

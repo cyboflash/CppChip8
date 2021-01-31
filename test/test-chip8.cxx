@@ -716,3 +716,153 @@ TEST_F(Chip8Fixture, Test_op_sub)
         w.reset();
     }
 }
+
+// 8xy6 - SHR Vx {, Vy}
+// Set Vx = Vx SHR 1.
+// If the least-significant bit of Vx is 1, then VF is set to 1, otherwise 0. Then Vx is divided by 2.
+TEST_F(Chip8Fixture, Test_op_shr)
+{
+    for (auto i = 0; i < 100; i++)
+    {
+        uint8_t regX = getRandomRegister();
+        uint8_t valX = getRandomUint8();
+        uint16_t op = 0x6000 | ((0x0000 | regX) << 8) | valX;
+        w.writeOp(op);
+
+        uint8_t regY = getRandomRegister();
+        uint8_t valY = getRandomUint8();
+        op = 0x6000 | ((0x0000 | regY) << 8) | valY;
+        w.writeOp(op);
+
+        op = 0x8006 | ((0x0000 | regX) << 8) | ((0x0000 | regY) << 4);
+        w.writeOp(op);
+
+        w.done();
+
+        chip8.loadFile(w.filename);
+
+        chip8.emulateCycle();
+        chip8.emulateCycle();
+
+        valX = chip8.getV(regX);
+        valY = chip8.getV(regY);
+
+        chip8.emulateCycle();
+
+        // get lsb value
+        uint8_t lsb = valX & 0x01;
+        uint8_t regFVal = chip8.getV(0xF);
+        
+        EXPECT_EQ(lsb, regFVal) 
+            << fmt::format(
+                    "Iteration: {i:}\n"
+                    "op: {op:X}\n"
+                    )
+            ; 
+
+        EXPECT_EQ(chip8.getV(regX), valX >> 1)
+            << fmt::format(
+                    "Iteration: {i:}\n"
+                    "op: {op:X}\n"
+                    "regX: {regX:}\n"
+                    "regY: {regY:}\n"
+                    "valX: {valX:X}\n"
+                    "valY: {valY:X}\n"
+                    "V[0x{regX:X}]: {regXVal:X}\n"
+                    "V[0x{regY:X}]: {regYVal:X}\n"
+                    ,fmt::arg("i", i)
+                    ,fmt::arg("op", op)
+                    ,fmt::arg("regX", regX)
+                    ,fmt::arg("regY", regY)
+                    ,fmt::arg("valY", valY)
+                    ,fmt::arg("valX", valX)
+                    ,fmt::arg("regXVal", chip8.getV(regX))
+                    ,fmt::arg("regYVal", chip8.getV(regY))
+                    )
+            ;
+
+        chip8.reset();
+        w.reset();
+    }
+}
+
+// 8xy7 - SUBN Vx, Vy
+// Set Vx = Vy - Vx, set VF = NOT borrow.
+//
+// If Vy > Vx, then VF is set to 1, otherwise 0. Then Vx is subtracted from Vy, and the results stored in Vx.
+TEST_F(Chip8Fixture, Test_op_subn)
+{
+    for (auto i = 0; i < 100; i++)
+    {
+        uint8_t regX = getRandomRegister();
+        uint8_t valX = getRandomUint8();
+        uint16_t op = 0x6000 | ((0x0000 | regX) << 8) | valX;
+        w.writeOp(op);
+
+        uint8_t regY = getRandomRegister();
+        uint8_t valY = getRandomUint8();
+        op = 0x6000 | ((0x0000 | regY) << 8) | valY;
+        w.writeOp(op);
+
+        op = 0x8007 | ((0x0000 | regX) << 8) | ((0x0000 | regY) << 4);
+        w.writeOp(op);
+
+        w.done();
+
+        chip8.loadFile(w.filename);
+
+        chip8.emulateCycle();
+        chip8.emulateCycle();
+
+        valX = chip8.getV(regX);
+        valY = chip8.getV(regY);
+
+        chip8.emulateCycle();
+
+        uint8_t regFVal = chip8.getV(0xF);
+        uint8_t regXVal = chip8.getV(regX);
+        uint8_t regYVal = chip8.getV(regY);
+        EXPECT_EQ((valY > valX) ? 0x01 : 0x00, regFVal) 
+            << fmt::format(
+                    "Iteration: {i:}\n"
+                    "op: {op:X}\n"
+                    "valX: {valX:X}\n"
+                    "valY: {valY:X}\n"
+                    "regFVal: {regFVal:X}\n"
+                    "regXVal: {regXVal:X}\n"
+                    "regYVal: {regYVal:X}\n"
+                    ,fmt::arg("i", i)
+                    ,fmt::arg("op", op)
+                    ,fmt::arg("valX", valX)
+                    ,fmt::arg("valY", valY)
+                    ,fmt::arg("regFVal", regFVal)
+                    ,fmt::arg("regXVal", regXVal)
+                    ,fmt::arg("regYVal", regYVal)
+                    )
+            ; 
+
+        EXPECT_EQ(static_cast<uint8_t>(valY - valX), chip8.getV(regX))
+            << fmt::format(
+                    "Iteration: {i:}\n"
+                    "op: {op:X}\n"
+                    "regX: {regX:}\n"
+                    "regY: {regY:}\n"
+                    "valX: {valX:}\n"
+                    "valY: {valY:}\n"
+                    "V[0x{regX:X}]: {regXVal:}\n"
+                    "V[0x{regY:X}]: {regYVal:}\n"
+                    ,fmt::arg("i", i)
+                    ,fmt::arg("op", op)
+                    ,fmt::arg("regX", regX)
+                    ,fmt::arg("regY", regY)
+                    ,fmt::arg("valY", valY)
+                    ,fmt::arg("valX", valX)
+                    ,fmt::arg("regXVal", chip8.getV(regX))
+                    ,fmt::arg("regYVal", chip8.getV(regY))
+                    )
+            ;
+
+        chip8.reset();
+        w.reset();
+    }
+}
