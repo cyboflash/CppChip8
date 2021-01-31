@@ -408,7 +408,7 @@ void Chip8::op_subn(void)
 // If the most-significant bit of Vx is 1, then VF is set to 1, otherwise to 0. Then Vx is multiplied by 2.
 void Chip8::op_shl(void)
 {
-    m_V[0xF] = m_V[m_x] & 0x80;
+    m_V[0xF] = (m_V[m_x] & 0x80) ? 0x01 : 0x00;
     m_V[m_x] <<= 1;
 }
 //
