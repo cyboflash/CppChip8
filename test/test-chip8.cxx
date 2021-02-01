@@ -65,12 +65,12 @@ struct Chip8Fixture : public ::testing::Test
     uint8_t getRandomRegister()
     {
         //register F is not used for calcualations. It is an over/underflow register
-        return getRandomIntValue(0, Chip8::REGISTER_CNT-2);
+        return getRandomIntValue<uint8_t>(0, Chip8::REGISTER_CNT-2);
     }
 
     uint8_t getRandomUint8()
     {
-        return getRandomIntValue(0, 255);
+        return getRandomIntValue<uint8_t>(0, 255);
     }
 
     uint16_t getRandomMemAddr()
@@ -101,7 +101,7 @@ TEST_F(Chip8Fixture, TestInitialization)
     // EXPECT_EQ(Chip8::SP_RESET_VALUE, chip8.getSP());
     EXPECT_EQ(Chip8::PROGRAM_START_ADDR, chip8.getPC());
 
-    for (auto i = 0; i < Chip8::REGISTER_CNT; i++)
+    for (uint8_t i = 0; i < Chip8::REGISTER_CNT; i++)
     {
         EXPECT_EQ(Chip8::REGISTER_RESET_VALUE, chip8.getV(i));
     }
@@ -200,7 +200,7 @@ TEST_F(Chip8Fixture, Test_op_ldx)
     {
         uint8_t reg = getRandomRegister();
         uint8_t val = getRandomUint8();
-        uint16_t op = 0x6000 | ((0x0000 | reg) << 8) | val;
+        uint16_t op = static_cast<uint16_t>((0x6000 | ((0x0000 | reg) << 8) | val));
             
         w.writeOp(op);
         w.done();
@@ -232,12 +232,12 @@ TEST_F(Chip8Fixture, Test_op_se)
         // write a value to a register
         uint8_t reg = getRandomRegister();
         uint8_t val = getRandomUint8();
-        uint16_t op = 0x6000 | ((0x0000 | reg) << 8) | val;
+        uint16_t op = static_cast<uint16_t>(0x6000 | ((0x0000 | reg) << 8) | val);
 
         w.writeOp(op);
 
         // write an op 
-        op = 0x3000 | ((0x0000 | reg) << 8) | val;
+        op = static_cast<uint16_t>(0x3000 | ((0x0000 | reg) << 8) | val);
         w.writeOp(op);
         w.done();
 
@@ -263,12 +263,12 @@ TEST_F(Chip8Fixture, Test_op_sne)
         // write a value to a register
         uint8_t reg = getRandomRegister();
         uint8_t val = getRandomUint8();
-        uint16_t op = 0x6000 | ((0x0000 | reg) << 8) | (val + 1);
+        uint16_t op = static_cast<uint16_t>(0x6000 | ((0x0000 | reg) << 8) | (val + 1));
 
         w.writeOp(op);
 
         // write an op 
-        op = 0x4000 | ((0x0000 | reg) << 8) | val;
+        op = static_cast<uint16_t>(0x4000 | ((0x0000 | reg) << 8) | val);
         w.writeOp(op);
         w.done();
 
@@ -296,13 +296,13 @@ TEST_F(Chip8Fixture, Test_op_sker)
         uint8_t reg2 = getRandomRegister();
         uint8_t val = getRandomUint8();
 
-        uint16_t op = 0x6000 | ((0x0000 | reg1) << 8) | val;
+        uint16_t op = static_cast<uint16_t>(0x6000 | ((0x0000 | reg1) << 8) | val);
         w.writeOp(op);
-        op = 0x6000 | ((0x0000 | reg2) << 8) | val;
+        op = static_cast<uint16_t>(0x6000 | ((0x0000 | reg2) << 8) | val);
         w.writeOp(op);
 
         // write an op 
-        op = 0x5000 | ((0x0000 | reg1) << 8) | ((0x0000 | reg2) << 4);
+        op = static_cast<uint16_t>(0x5000 | ((0x0000 | reg1) << 8) | ((0x0000 | reg2) << 4));
         w.writeOp(op);
 
         w.done();
@@ -339,11 +339,11 @@ TEST_F(Chip8Fixture, Test_op_add)
         uint8_t reg = getRandomRegister();
         uint8_t val = getRandomUint8();
 
-        uint16_t op = 0x6000 | ((0x0000 | reg) << 8) | val;
+        uint16_t op = static_cast<uint16_t>(0x6000 | ((0x0000 | reg) << 8) | val);
         w.writeOp(op);
 
         uint8_t byte = getRandomUint8();
-        op = 0x7000 | ((0x0000 | reg) << 8) | byte;
+        op = static_cast<uint16_t>(0x7000 | ((0x0000 | reg) << 8) | byte);
         w.writeOp(op);
 
         w.done();
@@ -381,11 +381,11 @@ TEST_F(Chip8Fixture, Test_op_ldr)
         uint8_t regY = getRandomRegister();
         uint8_t valY = getRandomUint8();
 
-        uint16_t op = 0x6000 | ((0x0000 | regY) << 8) | valY;
+        uint16_t op = static_cast<uint16_t>(0x6000 | ((0x0000 | regY) << 8) | valY);
         w.writeOp(op);
 
         uint8_t regX = getRandomRegister();
-        op = 0x8000 | ((0x0000 | regX) << 8) | regY << 4;
+        op = static_cast<uint16_t>(0x8000 | ((0x0000 | regX) << 8) | regY << 4);
         w.writeOp(op);
 
         w.done();
@@ -423,15 +423,15 @@ TEST_F(Chip8Fixture, Test_op_or)
     {
         uint8_t regY = getRandomRegister();
         uint8_t valY = getRandomUint8();
-        uint16_t op = 0x6000 | ((0x0000 | regY) << 8) | valY;
+        uint16_t op = static_cast<uint16_t>(0x6000 | ((0x0000 | regY) << 8) | valY);
         w.writeOp(op);
 
         uint8_t regX = getRandomRegister();
         uint8_t valX = getRandomUint8();
-        op = 0x6000 | ((0x0000 | regX) << 8) | valX;
+        op = static_cast<uint16_t>(0x6000 | ((0x0000 | regX) << 8) | valX);
         w.writeOp(op);
 
-        op = 0x8001 | ((0x0000 | regX) << 8) | ((0x0000 | regY) << 4);
+        op = static_cast<uint16_t>(0x8001 | ((0x0000 | regX) << 8) | ((0x0000 | regY) << 4));
         w.writeOp(op);
 
         w.done();
@@ -480,15 +480,15 @@ TEST_F(Chip8Fixture, Test_op_and)
     {
         uint8_t regY = getRandomRegister();
         uint8_t valY = getRandomUint8();
-        uint16_t op = 0x6000 | ((0x0000 | regY) << 8) | valY;
+        uint16_t op = static_cast<uint16_t>(0x6000 | ((0x0000 | regY) << 8) | valY);
         w.writeOp(op);
 
         uint8_t regX = getRandomRegister();
         uint8_t valX = getRandomUint8();
-        op = 0x6000 | ((0x0000 | regX) << 8) | valX;
+        op = static_cast<uint16_t>(0x6000 | ((0x0000 | regX) << 8) | valX);
         w.writeOp(op);
 
-        op = 0x8002 | ((0x0000 | regX) << 8) | ((0x0000 | regY) << 4);
+        op = static_cast<uint16_t>(0x8002 | ((0x0000 | regX) << 8) | ((0x0000 | regY) << 4));
         w.writeOp(op);
 
         w.done();
@@ -537,15 +537,15 @@ TEST_F(Chip8Fixture, Test_op_xor)
     {
         uint8_t regY = getRandomRegister();
         uint8_t valY = getRandomUint8();
-        uint16_t op = 0x6000 | ((0x0000 | regY) << 8) | valY;
+        uint16_t op = static_cast<uint16_t>(0x6000 | ((0x0000 | regY) << 8) | valY);
         w.writeOp(op);
 
         uint8_t regX = getRandomRegister();
         uint8_t valX = getRandomUint8();
-        op = 0x6000 | ((0x0000 | regX) << 8) | valX;
+        op = static_cast<uint16_t>(0x6000 | ((0x0000 | regX) << 8) | valX);
         w.writeOp(op);
 
-        op = 0x8003 | ((0x0000 | regX) << 8) | ((0x0000 | regY) << 4);
+        op = static_cast<uint16_t>(0x8003 | ((0x0000 | regX) << 8) | ((0x0000 | regY) << 4));
         w.writeOp(op);
 
         w.done();
@@ -593,15 +593,15 @@ TEST_F(Chip8Fixture, Test_op_addr)
     {
         uint8_t regY = getRandomRegister();
         uint8_t valY = getRandomUint8();
-        uint16_t op = 0x6000 | ((0x0000 | regY) << 8) | valY;
+        uint16_t op = static_cast<uint16_t>(0x6000 | ((0x0000 | regY) << 8) | valY);
         w.writeOp(op);
 
         uint8_t regX = getRandomRegister();
         uint8_t valX = getRandomUint8();
-        op = 0x6000 | ((0x0000 | regX) << 8) | valX;
+        op = static_cast<uint16_t>(0x6000 | ((0x0000 | regX) << 8) | valX);
         w.writeOp(op);
 
-        op = 0x8004 | ((0x0000 | regX) << 8) | ((0x0000 | regY) << 4);
+        op = static_cast<uint16_t>(0x8004 | ((0x0000 | regX) << 8) | ((0x0000 | regY) << 4));
         w.writeOp(op);
 
         w.done();
@@ -616,7 +616,7 @@ TEST_F(Chip8Fixture, Test_op_addr)
 
         chip8.emulateCycle();
 
-        uint16_t result = valX + valY;
+        uint16_t result = static_cast<uint16_t>(valX + valY);
 
         EXPECT_EQ(static_cast<uint8_t>(result), chip8.getV(regX))
             << fmt::format(
@@ -660,15 +660,15 @@ TEST_F(Chip8Fixture, Test_op_sub)
     {
         uint8_t regY = getRandomRegister();
         uint8_t valY = getRandomUint8();
-        uint16_t op = 0x6000 | ((0x0000 | regY) << 8) | valY;
+        uint16_t op = static_cast<uint16_t>(0x6000 | ((0x0000 | regY) << 8) | valY);
         w.writeOp(op);
 
         uint8_t regX = getRandomRegister();
         uint8_t valX = getRandomUint8();
-        op = 0x6000 | ((0x0000 | regX) << 8) | valX;
+        op = static_cast<uint16_t>(0x6000 | ((0x0000 | regX) << 8) | valX);
         w.writeOp(op);
 
-        op = 0x8005 | ((0x0000 | regX) << 8) | ((0x0000 | regY) << 4);
+        op = static_cast<uint16_t>(0x8005 | ((0x0000 | regX) << 8) | ((0x0000 | regY) << 4));
         w.writeOp(op);
 
         w.done();
@@ -726,15 +726,15 @@ TEST_F(Chip8Fixture, Test_op_shr)
     {
         uint8_t regX = getRandomRegister();
         uint8_t valX = getRandomUint8();
-        uint16_t op = 0x6000 | ((0x0000 | regX) << 8) | valX;
+        uint16_t op = static_cast<uint16_t>(0x6000 | ((0x0000 | regX) << 8) | valX);
         w.writeOp(op);
 
         uint8_t regY = getRandomRegister();
         uint8_t valY = getRandomUint8();
-        op = 0x6000 | ((0x0000 | regY) << 8) | valY;
+        op = static_cast<uint16_t>(0x6000 | ((0x0000 | regY) << 8) | valY);
         w.writeOp(op);
 
-        op = 0x8006 | ((0x0000 | regX) << 8) | ((0x0000 | regY) << 4);
+        op = static_cast<uint16_t>(0x8006 | ((0x0000 | regX) << 8) | ((0x0000 | regY) << 4));
         w.writeOp(op);
 
         w.done();
@@ -796,15 +796,15 @@ TEST_F(Chip8Fixture, Test_op_subn)
     {
         uint8_t regX = getRandomRegister();
         uint8_t valX = getRandomUint8();
-        uint16_t op = 0x6000 | ((0x0000 | regX) << 8) | valX;
+        uint16_t op = static_cast<uint16_t>(0x6000 | ((0x0000 | regX) << 8) | valX);
         w.writeOp(op);
 
         uint8_t regY = getRandomRegister();
         uint8_t valY = getRandomUint8();
-        op = 0x6000 | ((0x0000 | regY) << 8) | valY;
+        op = static_cast<uint16_t>(0x6000 | ((0x0000 | regY) << 8) | valY);
         w.writeOp(op);
 
-        op = 0x8007 | ((0x0000 | regX) << 8) | ((0x0000 | regY) << 4);
+        op = static_cast<uint16_t>(0x8007 | ((0x0000 | regX) << 8) | ((0x0000 | regY) << 4));
         w.writeOp(op);
 
         w.done();
@@ -876,15 +876,15 @@ TEST_F(Chip8Fixture, Test_op_shl)
     {
         uint8_t regX = getRandomRegister();
         uint8_t valX = getRandomUint8();
-        uint16_t op = 0x6000 | ((0x0000 | regX) << 8) | valX;
+        uint16_t op = static_cast<uint16_t>(0x6000 | ((0x0000 | regX) << 8) | valX);
         w.writeOp(op);
 
         uint8_t regY = getRandomRegister();
         uint8_t valY = getRandomUint8();
-        op = 0x6000 | ((0x0000 | regY) << 8) | valY;
+        op = static_cast<uint16_t>(0x6000 | ((0x0000 | regY) << 8) | valY);
         w.writeOp(op);
 
-        op = 0x800E | ((0x0000 | regX) << 8) | ((0x0000 | regY) << 4);
+        op = static_cast<uint16_t>(0x800E | ((0x0000 | regX) << 8) | ((0x0000 | regY) << 4));
         w.writeOp(op);
 
         w.done();
@@ -957,15 +957,15 @@ TEST_F(Chip8Fixture, Test_op_sner)
     {
         uint8_t regX = getRandomRegister();
         uint8_t valX = getRandomUint8();
-        uint16_t op = 0x6000 | ((0x0000 | regX) << 8) | valX;
+        uint16_t op = static_cast<uint16_t>(0x6000 | ((0x0000 | regX) << 8) | valX);
         w.writeOp(op);
 
         uint8_t regY = getRandomRegister();
         uint8_t valY = getRandomUint8();
-        op = 0x6000 | ((0x0000 | regY) << 8) | valY;
+        op = static_cast<uint16_t>(0x6000 | ((0x0000 | regY) << 8) | valY);
         w.writeOp(op);
 
-        op = 0x9000 | ((0x0000 | regX) << 8) | ((0x0000 | regY) << 4);
+        op = static_cast<uint16_t>(0x9000 | ((0x0000 | regX) << 8) | ((0x0000 | regY) << 4));
         w.writeOp(op);
 
         w.done();
@@ -1009,7 +1009,7 @@ TEST_F(Chip8Fixture, Test_op_ldi)
     for (auto i = 0; i < 100; i++)
     {
         uint16_t iVal = getRandomUint16() & 0x0FFF;
-        uint16_t op = 0xA000 | iVal;
+        uint16_t op = static_cast<uint16_t>(0xA000 | iVal);
         w.writeOp(op);
 
         w.done();
@@ -1042,11 +1042,11 @@ TEST_F(Chip8Fixture, Test_op_jpr)
     for (auto i = 0; i < 100; i++)
     {
         uint8_t valX = getRandomUint8();
-        uint16_t op = 0x6000 | valX;
+        uint16_t op = static_cast<uint16_t>(0x6000 | valX);
         w.writeOp(op);
 
         uint16_t nnn = getRandomUint16() & 0x0FFF;
-        op = 0xB000 | nnn;
+        op = static_cast<uint16_t>(0xB000 | nnn);
         w.writeOp(op);
 
         w.done();
@@ -1086,7 +1086,7 @@ TEST_F(Chip8Fixture, Test_op_rnd)
         uint8_t rnd = getRandomUint8();
         uint8_t mask = getRandomUint8();
 
-        uint16_t op = 0xC000 | (0x0000 | (regX << 8)) | mask;
+        uint16_t op = static_cast<uint16_t>(0xC000 | (0x0000 | (regX << 8)) | mask);
         w.writeOp(op);
         w.done();
 

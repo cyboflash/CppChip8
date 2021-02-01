@@ -37,7 +37,7 @@ if (BUILD_TEST_PACKAGE)
     set(Library ${Project})
     add_library(${Library} ${Sources})
     set_property(TARGET ${Library} PROPERTY CXX_STANDARD 20)
-    target_compile_options(${Library} PUBLIC -Wall -Werror -Wextra -pedantic -fmax-errors=3)
+    target_compile_options(${Library} PUBLIC -Wall -Werror -Wextra -Wpedantic -Wconversion -fmax-errors=3)
     target_link_libraries(${Library} PUBLIC fmt::fmt)
 
     enable_testing()
