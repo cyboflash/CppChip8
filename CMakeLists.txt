@@ -20,30 +20,32 @@ FetchContent_MakeAvailable(fmt)
 #     )
 # FetchContent_MakeAvailable(spdlog)
 
-file(GLOB Sources ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cxx)
+set(SourceDir ${CMAKE_CURRENT_SOURCE_DIR}/src)
+set(LibrarySources ${SourceDir}/Chip8.cxx)
+set(ExecutableSources ${SourceDir}/main.cxx)
+set(CompilationFlags -Wall -Werror -Wextra -Wpedantic -Wconversion -fmax-errors=3)
+set(LinkLibraries fmt::fmt)
+set(CxxStandard 20)
 
 set(Executable ${Project}-main)
+set(Library ${Project})
 
-add_executable(${Executable} ${Sources})
-set_property(TARGET ${Executable} PROPERTY CXX_STANDARD 20)
-target_compile_options(${Executable} PRIVATE -Wall -Werror -Wextra -Wpedantic -Wconversion -fmax-errors=3)
-target_link_libraries(${Executable} PRIVATE fmt::fmt)
+add_library(${Library} ${LibrarySources})
+set_property(TARGET ${Library} PROPERTY CXX_STANDARD ${CxxStandard})
+target_compile_options(${Library} PUBLIC ${CompilationFlags})
+target_link_libraries(${Library} PUBLIC ${LinkLibraries})
+
+add_executable(${Executable} ${ExecutableSources})
+set_property(TARGET ${Executable} PROPERTY CXX_STANDARD ${CxxStandard})
+target_compile_options(${Executable} PRIVATE ${CompilationFlags})
+target_link_libraries(${Executable} PRIVATE ${Library} ${LinkLibraries})
 
 option(BUILD_TEST_PACKAGE "Build unit tests" ON)
 
 if (BUILD_TEST_PACKAGE)
-    list(FILTER Sources EXCLUDE REGEX "main\.cxx")
-
-    set(Library ${Project})
-    add_library(${Library} ${Sources})
-    set_property(TARGET ${Library} PROPERTY CXX_STANDARD 20)
-    target_compile_options(${Library} PUBLIC -Wall -Werror -Wextra -Wpedantic -Wconversion -fmax-errors=3)
-    target_link_libraries(${Library} PUBLIC fmt::fmt)
-
     enable_testing()
     include(GoogleTest)
     add_subdirectory(test)
-
 endif()
 
 if (NOT CMAKE_BUILD_TYPE)
