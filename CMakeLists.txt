@@ -26,7 +26,7 @@ set(Executable ${Project}-main)
 
 add_executable(${Executable} ${Sources})
 set_property(TARGET ${Executable} PROPERTY CXX_STANDARD 20)
-target_compile_options(${Executable} PRIVATE -Wall -Werror -Wextra -pedantic -fmax-errors=3)
+target_compile_options(${Executable} PRIVATE -Wall -Werror -Wextra -Wpedantic -Wconversion -fmax-errors=3)
 target_link_libraries(${Executable} PRIVATE fmt::fmt)
 
 option(BUILD_TEST_PACKAGE "Build unit tests" ON)

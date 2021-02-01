@@ -266,7 +266,10 @@ void Chip8::op_ret(void)
 {
     m_PC = m_Stack.top();
     m_Stack.pop();
-    m_SP -= SP_RESET_VALUE;
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wconversion"
+    m_SP -= 1;
+#pragma GCC diagnostic pop
 }
 
 
@@ -283,7 +286,10 @@ void Chip8::op_jp(void)
 // The interpreter increments the stack pointer, then puts the current PC on the top of the stack. The PC is then set to nnn.
 void Chip8::op_call(void)
 {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wconversion"
     m_SP += 1;
+#pragma GCC diagnostic pop
     m_Stack.push(m_PC);
     m_PC = m_nnn;
 }
@@ -340,7 +346,10 @@ void Chip8::op_ldx(void)
 // Adds the value kk to the value of register Vx, then stores the result in Vx.
 void Chip8::op_add(void)
 {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wconversion"
     m_V[m_x] += m_kk;
+#pragma GCC diagnostic pop
 }
 
 // 8xy0 - LD Vx, Vy
@@ -358,7 +367,10 @@ void Chip8::op_ldr(void)
 // Performs a bitwise OR on the values of Vx and Vy, then stores the result in Vx. A bitwise OR compares the corrseponding bits from two values, and if either bit is 1, then the same bit in the result is also 1. Otherwise, it is 0.
 void Chip8::op_or(void)
 {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wconversion"
     m_V[m_x] |= m_V[m_y];
+#pragma GCC diagnostic pop
 }
 
 // 8xy2 - AND Vx, Vy
@@ -367,7 +379,10 @@ void Chip8::op_or(void)
 // Performs a bitwise AND on the values of Vx and Vy, then stores the result in Vx. A bitwise AND compares the corrseponding bits from two values, and if both bits are 1, then the same bit in the result is also 1. Otherwise, it is 0.
 void Chip8::op_and(void)
 {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wconversion"
     m_V[m_x] &= m_V[m_y];
+#pragma GCC diagnostic pop
 }
 
 // 8xy3 - XOR Vx, Vy
@@ -376,7 +391,10 @@ void Chip8::op_and(void)
 // Performs a bitwise exclusive OR on the values of Vx and Vy, then stores the result in Vx. An exclusive OR compares the corrseponding bits from two values, and if the bits are not both the same, then the corresponding bit in the result is set to 1. Otherwise, it is 0.
 void Chip8::op_xor(void)
 {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wconversion"
     m_V[m_x] ^= m_V[m_y];
+#pragma GCC diagnostic pop
 }
 
 // 8xy4 - ADD Vx, Vy
@@ -385,7 +403,7 @@ void Chip8::op_xor(void)
 // The values of Vx and Vy are added together. If the result is greater than 8 bits (i.e., > 255,) VF is set to 1, otherwise 0. Only the lowest 8 bits of the result are kept, and stored in Vx.
 void Chip8::op_addr(void)
 {
-    uint16_t result = m_V[m_x] + m_V[m_y];
+    uint16_t result = static_cast<uint16_t>(m_V[m_x] + m_V[m_y]);
     m_V[0xF] = static_cast<uint8_t>(result > 255);
     m_V[m_x] = static_cast<uint8_t>(result & 0x00FF);
 }
@@ -397,7 +415,10 @@ void Chip8::op_addr(void)
 void Chip8::op_sub(void)
 {
     m_V[0xF] = static_cast<uint8_t>(m_V[m_x] > m_V[m_y]);
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wconversion"
     m_V[m_x] -= m_V[m_y];
+#pragma GCC diagnostic pop
 }
 
 // 8xy6 - SHR Vx {, Vy}
@@ -407,7 +428,10 @@ void Chip8::op_sub(void)
 void Chip8::op_shr(void)
 {
     m_V[0xF] = m_V[m_x] & 0x01;
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wconversion"
     m_V[m_x] >>= 1;
+#pragma GCC diagnostic pop
 }
 //
 //
@@ -418,7 +442,7 @@ void Chip8::op_shr(void)
 void Chip8::op_subn(void)
 {
     m_V[0xF] = static_cast<uint8_t>(m_V[m_y] > m_V[m_x]);
-    m_V[m_x] = m_V[m_y] - m_V[m_x];
+    m_V[m_x] = static_cast<uint8_t>(m_V[m_y] - m_V[m_x]);
 }
 //
 //
@@ -429,7 +453,10 @@ void Chip8::op_subn(void)
 void Chip8::op_shl(void)
 {
     m_V[0xF] = (m_V[m_x] & 0x80) ? 0x01 : 0x00;
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wconversion"
     m_V[m_x] <<= 1;
+#pragma GCC diagnostic pop
 }
 //
 //
@@ -489,7 +516,7 @@ void Chip8::op_drw(void)
         uint8_t spriteByte = m_Memory[m_I + row];
         for (uint8_t col = 0; col < 8; col++)
         {
-            uint8_t spritePixel = spriteByte & (0x80 >> col);
+            uint8_t spritePixel = static_cast<uint8_t>(spriteByte & (0x80 >> col));
             bool oldGfx = m_Gfx[(m_V[m_y] + row) % GFX_ROWS][(m_V[m_x] + col) % GFX_COLS];
             bool newGfx = oldGfx;
 
@@ -601,7 +628,10 @@ void Chip8::op_ldst(void)
 // The values of I and Vx are added, and the results are stored in I.
 void Chip8::op_addi(void)
 {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wconversion"
     m_I += m_V[m_x];
+#pragma GCC diagnostic pop
 }
 //
 //
@@ -611,7 +641,7 @@ void Chip8::op_addi(void)
 // The value of I is set to the location for the hexadecimal sprite corresponding to the value of Vx. See section 2.4, Display, for more information on the Chip-8 hexadecimal font.
 void Chip8::op_ldf(void)
 {
-    m_I = FONT_SPRITES_START_ADDR + 5*(m_V[m_x] & 0x0F);
+    m_I = static_cast<uint16_t>(FONT_SPRITES_START_ADDR + 5*(m_V[m_x] & 0x0F));
 }
 //
 //
@@ -627,10 +657,10 @@ void Chip8::op_ldb(void)
     uint8_t value = m_V[m_x];
 
     uint8_t hundreds = value/100;
-    value = value - hundreds*100;
+    value = static_cast<uint8_t>(value - hundreds*100);
 
     uint8_t tens = value/10;
-    value = value - tens*10; // what is currently left in value are the units
+    value = static_cast<uint8_t>(value - tens*10); // what is currently left in value are the units
 
     m_Memory[m_I] = hundreds;
     m_Memory[m_I + 1] = tens;
@@ -852,24 +882,30 @@ void Chip8::executeOp(void)
 
 void Chip8::incrementPC(void)
 {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wconversion"
     m_PC += INSTRUCTION_SIZE_B;
+#pragma GCC diagnostic pop
 }
 
 void Chip8::decrementPC(void)
 {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wconversion"
     m_PC -= INSTRUCTION_SIZE_B;
+#pragma GCC diagnostic pop
 }
 
 void Chip8::fetchOp(void)
 {
-    m_op = (m_Memory[m_PC] << 8 ) | m_Memory[m_PC + 1];
+    m_op = static_cast<uint16_t>((m_Memory[m_PC] << 8 ) | m_Memory[m_PC + 1]);
 
     // decode op
-    m_OpId = (m_op & 0xF000) >> 12;
+    m_OpId = static_cast<uint8_t>((m_op & 0xF000) >> 12);
     m_x    = (m_op & 0x0F00) >> 8;
     m_y    = (m_op & 0x00F0) >> 4;
     m_n    =  m_op & 0x000F;
-    m_kk   =  m_op & 0x00FF;
+    m_kk   = static_cast<uint8_t>(m_op & 0x00FF);
     m_nnn  =  m_op & 0x0FFF;
 }
 
@@ -1012,7 +1048,7 @@ void Chip8::displayMemoryContents(uint16_t startAddr, uint16_t endAddr) const
     auto originalFill = std::cout.fill(); 
 
     // display header
-    uint16_t nearestQuotientInteger = (startAddr/16) * 16;
+    uint16_t nearestQuotientInteger = static_cast<uint16_t>((startAddr/16) * 16);
     std::cout << "        ";
     std::cout << std::uppercase << std::right << std::hex;
     for (auto i = 0; i < 16; i++)
