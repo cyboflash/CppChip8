@@ -10,6 +10,7 @@ class Chip8
 {
     public:
     Chip8();
+    uint8_t getLastGeneratedRnd(void) const;
     void loadFile(std::string filename);
     void displayState(void) const;
     void displayMemoryContents(uint16_t startAddr = 0x0, uint16_t endAddr = 0xFFF) const;
@@ -64,6 +65,8 @@ class Chip8
     static constexpr bool GFX_RESET_VALUE = false;
     static constexpr uint8_t KEYBOARD_SIZE = 16;
     static constexpr bool KEYBOARD_RESET_VALUE = false;
+
+    uint8_t generateRandomUint8(void) const;
 
     void fetchOp(void);
     void executeOp(void);
@@ -151,6 +154,7 @@ class Chip8
     uint8_t m_y;
     uint8_t m_n;
     uint8_t m_kk;
+    uint8_t m_rnd;
     uint16_t m_nnn;
     uint8_t m_OpId;
     uint8_t m_DelayTimer;

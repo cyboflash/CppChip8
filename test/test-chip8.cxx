@@ -1033,3 +1033,87 @@ TEST_F(Chip8Fixture, Test_op_ldi)
         w.reset();
     }
 }
+// Bnnn - JP V0, addr
+// Jump to location nnn + V0.
+//
+// The program counter is set to nnn plus the value of V0.
+TEST_F(Chip8Fixture, Test_op_jpr)
+{
+    for (auto i = 0; i < 100; i++)
+    {
+        uint8_t valX = getRandomUint8();
+        uint16_t op = 0x6000 | valX;
+        w.writeOp(op);
+
+        uint16_t nnn = getRandomUint16() & 0x0FFF;
+        op = 0xB000 | nnn;
+        w.writeOp(op);
+
+        w.done();
+
+        chip8.loadFile(w.filename);
+
+        chip8.emulateCycle();
+        chip8.emulateCycle();
+
+        EXPECT_EQ(chip8.getPC(), (valX + nnn) & 0xFFF) 
+            << fmt::format(
+                    "Iteration: {i:}\n"
+                    "op: {op:X}\n"
+                    "valX: {valX:X}\n"
+                    "nnn: {nnn:X}\n"
+                    ,fmt::arg("i", i)
+                    ,fmt::arg("op", op)
+                    ,fmt::arg("valX", valX)
+                    ,fmt::arg("nnn", nnn)
+                    )
+            ; 
+
+        chip8.reset();
+        w.reset();
+    }
+}
+
+// Cxkk - RND Vx, byte
+// Set Vx = random byte AND kk.
+//
+// The interpreter generates a random number from 0 to 255, which is then ANDed with the value kk. The results are stored in Vx. See instruction 8xy2 for more information on AND.
+TEST_F(Chip8Fixture, Test_op_rnd)
+{
+    for (auto i = 0; i < 100; i++)
+    {
+        uint8_t regX = getRandomRegister();
+        uint8_t rnd = getRandomUint8();
+        uint8_t mask = getRandomUint8();
+
+        uint16_t op = 0xC000 | (0x0000 | (regX << 8)) | mask;
+        w.writeOp(op);
+        w.done();
+
+        chip8.loadFile(w.filename);
+        chip8.emulateCycle();
+
+        uint8_t valX = chip8.getV(regX);
+        uint8_t lastGeneratedRnd = chip8.getLastGeneratedRnd();
+
+        EXPECT_EQ(lastGeneratedRnd & mask, valX)
+            << fmt::format(
+                    "Iteration: {i:}\n"
+                    "op: {op:X}\n"
+                    "regX: {regX:X}\n"
+                    "valX: {valX:X}\n"
+                    "mask: {mask:X}\n"
+                    "rnd: {rnd:X}\n"
+                    ,fmt::arg("i", i)
+                    ,fmt::arg("op", op)
+                    ,fmt::arg("regX", regX)
+                    ,fmt::arg("valX", valX)
+                    ,fmt::arg("mask", mask)
+                    ,fmt::arg("rnd", rnd)
+                    )
+            ; 
+
+        chip8.reset();
+        w.reset();
+    }
+}

@@ -160,6 +160,21 @@ const std::vector<std::vector<uint8_t>> Chip8::FONT_SPRITES =
     { 0xF0, 0x80, 0xF0, 0x80, 0x80 }
 };
 
+uint8_t Chip8::getLastGeneratedRnd(void) const
+{
+    return m_rnd;
+}
+
+uint8_t Chip8::generateRandomUint8(void) const
+{
+
+    std::random_device device;
+    std::mt19937 generator(device());
+    std::uniform_int_distribution<uint8_t> distribution(0, 255);
+
+    return distribution(generator);
+}
+
 
 // I think it is Ok to return a whole vector. Compiler should be able to do
 // a return value optimization, RVO
@@ -447,7 +462,7 @@ void Chip8::op_ldi(void)
 // The program counter is set to nnn plus the value of V0.
 void Chip8::op_jpr(void)
 {
-    m_PC = m_nnn + m_V[0x0];
+    m_PC = (m_nnn + m_V[0x0]) & 0xFFF;
 }
 //
 //
@@ -458,11 +473,8 @@ void Chip8::op_jpr(void)
 //
 void Chip8::op_rnd(void)
 {
-    std::random_device device;
-    std::mt19937 generator(device());
-    std::uniform_int_distribution<uint8_t> distribution(0, 255);
-
-    m_V[m_x] = distribution(generator) & m_kk;
+    m_rnd = generateRandomUint8();
+    m_V[m_x] = m_rnd & m_kk;
 }
 
 // Dxyn - DRW Vx, Vy, nibble
