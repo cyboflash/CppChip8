@@ -22,6 +22,7 @@ class Chip8
     uint8_t getSP() const;
     std::stack<uint16_t> getStack() const;
     uint8_t getV(uint8_t nbr) const;
+    uint16_t getI(void) const;
     uint8_t getKey(uint8_t nbr) const;
     uint8_t getDelayTimer() const;
     uint8_t getSoundTimer() const;

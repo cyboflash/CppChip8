@@ -946,3 +946,90 @@ TEST_F(Chip8Fixture, Test_op_shl)
         w.reset();
     }
 }
+
+// 9xy0 - SNE Vx, Vy
+// Skip next instruction if Vx != Vy.
+//
+// The values of Vx and Vy are compared, and if they are not equal, the program counter is increased by 2.
+TEST_F(Chip8Fixture, Test_op_sner)
+{
+    for (auto i = 0; i < 100; i++)
+    {
+        uint8_t regX = getRandomRegister();
+        uint8_t valX = getRandomUint8();
+        uint16_t op = 0x6000 | ((0x0000 | regX) << 8) | valX;
+        w.writeOp(op);
+
+        uint8_t regY = getRandomRegister();
+        uint8_t valY = getRandomUint8();
+        op = 0x6000 | ((0x0000 | regY) << 8) | valY;
+        w.writeOp(op);
+
+        op = 0x9000 | ((0x0000 | regX) << 8) | ((0x0000 | regY) << 4);
+        w.writeOp(op);
+
+        w.done();
+
+        chip8.loadFile(w.filename);
+
+        chip8.emulateCycle();
+        chip8.emulateCycle();
+
+        valX = chip8.getV(regX);
+        valY = chip8.getV(regY);
+
+        auto oldPC = chip8.getPC();
+        chip8.emulateCycle();
+
+        EXPECT_EQ(
+                (valX == valY) ? oldPC + Chip8::INSTRUCTION_SIZE_B : oldPC + 2*Chip8::INSTRUCTION_SIZE_B,
+                chip8.getPC()
+                ) 
+            << fmt::format(
+                    "Iteration: {i:}\n"
+                    "op: {op:X}\n"
+                    "valX: {valX:X}\n"
+                    "valY: {valY:X}\n"
+                    ,fmt::arg("i", i)
+                    ,fmt::arg("op", op)
+                    ,fmt::arg("valX", valX)
+                    ,fmt::arg("valY", valY)
+                    )
+            ; 
+
+        chip8.reset();
+        w.reset();
+    }
+}
+// Annn - LD I, addr
+// Set I = nnn.
+// The value of register I is set to nnn./
+TEST_F(Chip8Fixture, Test_op_ldi)
+{
+    for (auto i = 0; i < 100; i++)
+    {
+        uint16_t iVal = getRandomUint16() & 0x0FFF;
+        uint16_t op = 0xA000 | iVal;
+        w.writeOp(op);
+
+        w.done();
+
+        chip8.loadFile(w.filename);
+
+        chip8.emulateCycle();
+
+        uint16_t valI = chip8.getI();
+
+        EXPECT_EQ(iVal, valI) 
+            << fmt::format(
+                    "Iteration: {i:}\n"
+                    "op: {op:X}\n"
+                    ,fmt::arg("i", i)
+                    ,fmt::arg("op", op)
+                    )
+            ; 
+
+        chip8.reset();
+        w.reset();
+    }
+}

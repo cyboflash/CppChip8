@@ -202,6 +202,11 @@ uint8_t Chip8::getV(uint8_t nbr) const
     return m_V[nbr];
 }
 
+uint16_t Chip8::getI(void) const
+{
+    return m_I;
+}
+
 uint8_t Chip8::getKey(uint8_t nbr) const
 {    
     if (nbr >= REGISTER_CNT)
