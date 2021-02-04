@@ -10,9 +10,8 @@
 
 #include "Chip8.hxx"
 
-class RomWriter
+struct RomWriter
 {
-    public:
     RomWriter(const std::string filename) : filename(filename)
     {
         rom.open(filename, std::ios::out | std::ios::binary);
@@ -29,6 +28,24 @@ class RomWriter
         byte = static_cast<char>(op & 0x00FF);
         rom.write(&byte, sizeof(byte));
     }
+
+    // void writeByte(uint16_t addr, uint8_t value)
+    // {
+    //     if ((addr < Chip8::PROGRAM_START_ADDR) or (addr > Chip8::PROGRAM_END_ADDR))
+    //     {
+    //         std::string err = fmt::format(
+    //                 "Address, 0x{:04X}, is outside the valid range. "
+    //                 "Valid range is [0x{:04X}, 0x{:04X}]",
+    //                 addr, 
+    //                 Chip8::PROGRAM_START_ADDR,
+    //                 Chip8::PROGRAM_END_ADDR
+    //                 );
+    //         throw std::runtime_error(err);
+    //     }
+    //
+    //     rom.seekp(addr, std::ios::beg);
+    //     rom.write(static_cast<const int8_t *>(&value), sizeof(value));
+    // }
 
     void reset(void)
     {
@@ -62,10 +79,22 @@ struct Chip8Fixture : public ::testing::Test
         return distribution(generator);
     }
 
+    bool getRandomBool(void) {
+        std::random_device device;
+        std::mt19937 generator(device());
+        std::uniform_int_distribution<uint8_t> distribution(0, 1);
+        return 1 == distribution(generator);
+    }
+
     uint8_t getRandomRegister()
     {
         //register F is not used for calcualations. It is an over/underflow register
         return getRandomIntValue<uint8_t>(0, Chip8::REGISTER_CNT-2);
+    }
+
+    uint8_t getRandomKey()
+    {
+        return getRandomIntValue<uint8_t>(0, Chip8::KEYBOARD_SIZE-1);
     }
 
     uint8_t getRandomUint8()
@@ -1117,3 +1146,269 @@ TEST_F(Chip8Fixture, Test_op_rnd)
         w.reset();
     }
 }
+// Dxyn - DRW Vx, Vy, nibble
+// Display n-byte sprite starting at memory location I at (Vx, Vy), set VF = collision.
+//
+// The interpreter reads n bytes from memory, starting at the address stored in I. These bytes are then displayed as sprites on screen at coordinates (Vx, Vy). Sprites are XORed onto the existing screen. If this causes any pixels to be erased, VF is set to 1, otherwise it is set to 0. If the sprite is positioned so part of it is outside the coordinates of the display, it wraps around to the opposite side of the screen. See instruction 8xy3 for more information on XOR, and section 2.4, Display, for more information on the Chip-8 screen and sprites.
+// TEST_F(Chip8Fixture, Test_op_drw)
+// {
+//     for (auto i = 0; i < 1; i++)
+//     {
+//         uint8_t opCnt = 0;
+//         uint8_t spriteSize = getRandomIntValue<uint8_t>(0x1, 0xF);
+//
+//         uint16_t spriteAddr = getRandomIntValue<uint16_t>(
+//                 Chip8::PROGRAM_START_ADDR + 0x100,
+//                 static_cast<uint16_t>(Chip8::PROGRAM_END_ADDR - spriteSize)
+//                 );
+//
+//         std::vector<uint8_t> sprite;
+//         for (uint8_t i = 0; i < spriteSize; i++)
+//         {
+//             sprite[i] = getRandomUint8();
+//             w.writeByte(static_cast<uint8_t>(spriteAddr + i), sprite[i]);
+//         }
+//
+//         uint16_t op = static_cast<uint16_t>(0xA000 | spriteAddr);
+//         w.writeOp(op);
+//         opCnt++;
+//
+//         // write value to regX
+//         uint8_t regX = getRandomRegister();
+//         uint8_t valX = getRandomIntValue<uint8_t>(0, Chip8::GFX_ROWS-1);
+//         op = static_cast<uint16_t>(0x6000 | ((0x0000 | regX) << 8) | valX);
+//         w.writeOp(op);
+//         opCnt++;
+//
+//         // write value to regY
+//         uint8_t regY = getRandomRegister();
+//         uint8_t valY = getRandomIntValue<uint8_t>(0, Chip8::GFX_COLS-1);
+//         op = static_cast<uint16_t>(0x6000 | ((0x0000 | regY) << 8) | valY);
+//         w.writeOp(op);
+//         opCnt++;
+//
+//         op = static_cast<uint16_t>(
+//                 0xD0000 | ((0x0000 | regX) << 8) | ((0x0000 | regY) << 4) | spriteSize
+//                 );
+//         w.writeOp(op);
+//         opCnt++;
+//
+//         w.done();
+//
+//         // the reason i'm not using auto& is because i need a copy of a return value
+//         // and not a reference
+//         auto expectedGfx = chip8.getGfx();
+//
+//         for (uint8_t opIdx = 0; opIdx < opCnt; opIdx++)
+//         {
+//             chip8.emulateCycle();
+//         }
+//         auto newGfx = chip8.getGfx();
+//
+//         for (uint8_t row = 0; row < sprite.size(); row++)
+//         {
+//             uint8_t spriteByte = sprite[i];
+//             for (uint8_t col = 0; col < 8; col++)
+//             {
+//                 bool spritePixel = 
+//                     (0x01 == static_cast<uint8_t>(spriteByte & (0x80 >> col)));
+//                 expectedGfx[(valX + row) % Chip8::GFX_ROWS][(valY + col) % Chip8::GFX_COLS]
+//                     ^= spritePixel;
+//             }
+//         }
+//
+//         for(uint8_t row = 0; row < Chip8::GFX_ROWS; row++)
+//         {
+//             for(uint8_t col = 0; col < Chip8::GFX_COLS; col++)
+//             {
+//                 EXPECT_EQ(expectedGfx[row][col], newGfx[row][col]);
+//             }
+//         }
+//
+//     }
+// }
+//
+// Ex9E - SKP Vx
+// Skip next instruction if key with the value of Vx is pressed.
+//
+// Checks the keyboard, and if the key corresponding to the value of Vx is currently in the down position, PC is increased by 2.
+TEST_F(Chip8Fixture, Test_op_skp)
+{
+    for (auto i = 0; i < 100; i++)
+    {
+        uint8_t regX = getRandomRegister();
+        uint8_t key = getRandomKey();
+        bool isPressed = getRandomBool();
+
+        uint16_t op = static_cast<uint16_t>(0x6000 | (0x0000 | (regX << 8)) | key);
+        w.writeOp(op);
+
+        chip8.setKey(key, isPressed);
+
+        op = static_cast<uint16_t>(0xE09E | (0x0000 | (regX << 8)));
+        w.writeOp(op);
+
+        w.done();
+
+        chip8.loadFile(w.filename);
+        chip8.emulateCycle();
+        auto oldPC = chip8.getPC();
+        chip8.emulateCycle();
+
+        auto actualKey = chip8.getKey(regX);
+
+        auto expectedPC = isPressed ? 
+            oldPC + 2*Chip8::INSTRUCTION_SIZE_B : 
+            oldPC + Chip8::INSTRUCTION_SIZE_B;
+        EXPECT_EQ(expectedPC, chip8.getPC())
+            << fmt::format(
+                    "Iteration: {i:}\n"
+                    "op: {op:X}\n"
+                    "regX: {regX:X}\n"
+                    "expectedKey: {key:}\n"
+                    "actualKey: {actualKey:}\n"
+                    ,fmt::arg("i", i)
+                    ,fmt::arg("op", op)
+                    ,fmt::arg("regX", regX)
+                    ,fmt::arg("key", key)
+                    ,fmt::arg("actualKey", actualKey)
+                    )
+            ; 
+
+        chip8.reset();
+        w.reset();
+    }
+}
+
+// ExA1 - SKNP Vx
+// Skip next instruction if key with the value of Vx is not pressed.
+//
+// Checks the keyboard, and if the key corresponding to the value of Vx is currently in the up position, PC is increased by 2.
+TEST_F(Chip8Fixture, Test_op_sknp)
+{
+    for (auto i = 0; i < 100; i++)
+    {
+        uint8_t regX = getRandomRegister();
+        uint8_t key = getRandomKey();
+        bool isPressed = getRandomBool();
+
+        uint16_t op = static_cast<uint16_t>(0x6000 | (0x0000 | (regX << 8)) | key);
+        w.writeOp(op);
+
+        chip8.setKey(key, isPressed);
+
+        op = static_cast<uint16_t>(0xE0A1 | (0x0000 | (regX << 8)));
+        w.writeOp(op);
+
+        w.done();
+
+        chip8.loadFile(w.filename);
+        chip8.emulateCycle();
+        auto oldPC = chip8.getPC();
+        chip8.emulateCycle();
+
+        auto actualKey = chip8.getKey(regX);
+
+        auto expectedPC = (not isPressed) ? 
+            oldPC + 2*Chip8::INSTRUCTION_SIZE_B : 
+            oldPC + Chip8::INSTRUCTION_SIZE_B;
+        EXPECT_EQ(expectedPC, chip8.getPC())
+            << fmt::format(
+                    "Iteration: {i:}\n"
+                    "op: {op:X}\n"
+                    "regX: {regX:X}\n"
+                    "expectedKey: {key:}\n"
+                    "actualKey: {actualKey:}\n"
+                    ,fmt::arg("i", i)
+                    ,fmt::arg("op", op)
+                    ,fmt::arg("regX", regX)
+                    ,fmt::arg("key", key)
+                    ,fmt::arg("actualKey", actualKey)
+                    )
+            ; 
+
+        chip8.reset();
+        w.reset();
+    }
+}
+// Fx15 - LD DT, Vx
+// Set delay timer = Vx.
+//
+// DT is set equal to the value of Vx.
+TEST_F(Chip8Fixture, Test_op_lddt)
+{
+    for (auto i = 0; i < 100; i++)
+    {
+        uint8_t regX = getRandomRegister();
+        uint8_t value = getRandomUint8();
+
+        uint16_t op = static_cast<uint16_t>(0x6000 | (0x0000 | (regX << 8)) | value);
+        w.writeOp(op);
+
+        op = static_cast<uint16_t>(0xF015 | (0x0000 | (regX << 8)));
+        w.writeOp(op);
+
+        w.done();
+
+        chip8.loadFile(w.filename);
+        chip8.emulateCycle();
+        chip8.emulateCycle();
+
+        auto delayTimerValue = chip8.getDelayTimer();
+
+        EXPECT_EQ(value, delayTimerValue)
+            << fmt::format(
+                    "Iteration: {i:}\n"
+                    "op: {op:X}\n"
+                    "regX: {regX:X}\n"
+                    ,fmt::arg("i", i)
+                    ,fmt::arg("op", op)
+                    ,fmt::arg("regX", regX)
+                    )
+            ; 
+
+        chip8.reset();
+        w.reset();
+    }
+}
+
+// Fx07 - LD Vx, DT
+// Set Vx = delay timer value.
+//
+// The value of DT is placed into Vx.
+// TEST_F(Chip8Fixture, Test_op_lddt)
+// {
+//     for (auto i = 0; i < 100; i++)
+//     {
+//         uint8_t regX = getRandomRegister();
+//         uint8_t value = getRandomUint8();
+//
+//         uint16_t op = static_cast<uint16_t>(0x6000 | (0x0000 | (regX << 8)) | value);
+//         w.writeOp(op);
+//
+//         op = static_cast<uint16_t>(0xF015 | (0x0000 | (regX << 8)));
+//         w.writeOp(op);
+//
+//         w.done();
+//
+//         chip8.loadFile(w.filename);
+//         chip8.emulateCycle();
+//         chip8.emulateCycle();
+//
+//         auto delayTimerValue = chip8.getDelayTimer();
+//
+//         EXPECT_EQ(value, delayTimerValue)
+//             << fmt::format(
+//                     "Iteration: {i:}\n"
+//                     "op: {op:X}\n"
+//                     "regX: {regX:X}\n"
+//                     ,fmt::arg("i", i)
+//                     ,fmt::arg("op", op)
+//                     ,fmt::arg("regX", regX)
+//                     )
+//             ; 
+//
+//         chip8.reset();
+//         w.reset();
+//     }
+// }

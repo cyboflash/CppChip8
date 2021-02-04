@@ -160,6 +160,24 @@ const std::vector<std::vector<uint8_t>> Chip8::FONT_SPRITES =
     { 0xF0, 0x80, 0xF0, 0x80, 0x80 }
 };
 
+void Chip8::setKey(uint8_t nbr, bool isPressed)
+{
+    if (nbr >= KEYBOARD_SIZE)
+    {
+        std::string err = fmt::format(
+                "Keyboard key: 0x{:0X} is nvalid. Valid range is [0,0x{:0X}]",
+                nbr, KEYBOARD_SIZE-1
+                );
+        throw std::runtime_error(err);
+    }
+    m_Keyboard[nbr] = isPressed;
+}
+
+const auto& Chip8::getGfx(void) const
+{
+    return m_Gfx;
+}
+
 uint8_t Chip8::getLastGeneratedRnd(void) const
 {
     return m_rnd;
@@ -201,7 +219,10 @@ uint8_t Chip8::getSP() const
 {
     return m_SP;
 }
-std::stack<uint16_t> Chip8::getStack() const
+
+// I don't think it is a bad idea to return the whole stack.
+// It is fairly small for
+const std::stack<uint16_t>& Chip8::getStack() const
 {
     return m_Stack;
 }
@@ -222,15 +243,19 @@ uint16_t Chip8::getI(void) const
     return m_I;
 }
 
-uint8_t Chip8::getKey(uint8_t nbr) const
+bool Chip8::getKey(uint8_t nbr)
 {    
-    if (nbr >= REGISTER_CNT)
+    if (nbr >= KEYBOARD_SIZE)
     {
-        std::string err = "Key number must be between 0 and F. ";
-        err += fmt::format("Actual value is 0x{:X}", nbr);
-        throw std::runtime_error(err.c_str());
+        std::string err = fmt::format(
+                "Keyboard key: 0x{:0X} is nvalid. Valid range is [0,0x{:0X}]",
+                nbr, KEYBOARD_SIZE-1
+                );
+        throw std::runtime_error(err);
     }
-    return m_Keyboard[nbr];
+    auto value = m_Keyboard[nbr];
+    m_Keyboard[nbr] = KEYBOARD_RESET_VALUE;
+    return value;
 }
 
 uint8_t Chip8::getDelayTimer() const
@@ -526,9 +551,12 @@ void Chip8::op_drw(void)
 
             m_Gfx[(m_V[m_y] + row) % GFX_ROWS][(m_V[m_x] + col) % GFX_COLS] = newGfx;
 
-            // set the flag explicilty instead of relying on implicit conversion
-            // of bool to int. i think it makes the code more understandable
-            m_V[0xF] = ((true == oldGfx) and (false == newGfx)) ? 1 : 0;
+            if (0 == m_V[0xF])
+            {
+                // set the flag explicilty instead of relying on implicit conversion
+                // of bool to int. i think it makes the code more understandable
+                m_V[0xF] = ((true == oldGfx) and (false == newGfx)) ? 1 : 0;
+            }
         }
     }
     m_IsDrw = true;

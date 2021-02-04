@@ -10,6 +10,7 @@ class Chip8
 {
     public:
     Chip8();
+    const auto& getGfx(void) const;
     uint8_t getLastGeneratedRnd(void) const;
     void loadFile(std::string filename);
     void displayState(void) const;
@@ -21,10 +22,11 @@ class Chip8
     std::vector<uint8_t> readMemory(uint16_t startAddr, uint16_t endAddr) const;
     uint16_t getPC() const;
     uint8_t getSP() const;
-    std::stack<uint16_t> getStack() const;
+    const std::stack<uint16_t>& getStack() const;
     uint8_t getV(uint8_t nbr) const;
     uint16_t getI(void) const;
-    uint8_t getKey(uint8_t nbr) const;
+    bool getKey(uint8_t nbr);
+    void setKey(uint8_t nbr, bool isPressed);
     uint8_t getDelayTimer() const;
     uint8_t getSoundTimer() const;
 
@@ -44,6 +46,14 @@ class Chip8
 
     static constexpr uint8_t INSTRUCTION_SIZE_B = 2;
 
+    static constexpr uint8_t GFX_ROWS = 32;
+    static constexpr uint8_t GFX_COLS = 64;
+
+    static constexpr uint8_t KEYBOARD_SIZE = 16;
+    static constexpr bool KEY_PRESSED_VALUE = true;
+    static constexpr bool KEY_NOT_PRESSED_VALUE = false;
+    static constexpr bool KEYBOARD_RESET_VALUE = KEY_NOT_PRESSED_VALUE;
+
     private:
 
     typedef void (Chip8::*InstructionHandler)(void);
@@ -60,11 +70,7 @@ class Chip8
     // static constexpr uint16_t STACK_START_ADDR = 0xEA0;
     // static constexpr uint16_t STACK_END_ADDR = 0xEFF;
     static constexpr uint8_t STACK_SIZE = 16;
-    static constexpr uint8_t GFX_ROWS = 32;
-    static constexpr uint8_t GFX_COLS = 64;
     static constexpr bool GFX_RESET_VALUE = false;
-    static constexpr uint8_t KEYBOARD_SIZE = 16;
-    static constexpr bool KEYBOARD_RESET_VALUE = false;
 
     uint8_t generateRandomUint8(void) const;
 
