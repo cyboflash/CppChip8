@@ -680,8 +680,22 @@ void Chip8::op_ldf(void)
 //
 void Chip8::op_ldb(void)
 {
-    // TODO
-    // make sure that I, I+1 and I+2 don't go outside the memory boundaries
+    // make sure that I, I+1 and I+2 don't go outside the program memory boundaries
+    if ((m_I + 2 > PROGRAM_END_ADDR) || (m_I < PROGRAM_START_ADDR))
+    {
+        std::string err = fmt::format(
+                "Unable to execute 0x{op:04X} "
+                "I + 2 = 0x{I:04X} + 2 = 0x{result:04X}. "
+                "Result must be within valid range, [0x{start:03X}, 0x{end:03X}] "
+                ,fmt::arg("op", m_op)
+                ,fmt::arg("I", m_I)
+                ,fmt::arg("result", m_I + 2)
+                ,fmt::arg("start", PROGRAM_START_ADDR)
+                ,fmt::arg("end", PROGRAM_END_ADDR)
+                );
+
+        throw std::runtime_error(err);
+    }
     uint8_t value = m_V[m_x];
 
     uint8_t hundreds = value/100;
@@ -701,29 +715,61 @@ void Chip8::op_ldb(void)
 // The interpreter copies the values of registers V0 through Vx into memory, starting at the address in I.
 void Chip8::op_ldix(void)
 {
-    // TODO
-    // make sure that I...I+15 don't go outside the memory boundaries
-    uint16_t addr = m_I;
-    for (auto v : m_V)
+
+    if ((m_I + m_x > PROGRAM_END_ADDR) || (m_I < PROGRAM_START_ADDR))
     {
-        m_Memory[addr] = v;
+        std::string err = fmt::format(
+                "Unable to execute 0x{op:04X} "
+                "I + V[0x{regX:X}] = 0x{I:04X} + 0x{valX:02X} = 0x{result:04X}. "
+                "Result must be within valid range, [0x{start:03X}, 0x{end:03X}] "
+                ,fmt::arg("op", m_op)
+                ,fmt::arg("regX", m_x)
+                ,fmt::arg("I", m_I)
+                ,fmt::arg("valX", m_V[m_x])
+                ,fmt::arg("result", m_I + m_V[m_x])
+                ,fmt::arg("start", PROGRAM_START_ADDR)
+                ,fmt::arg("end", PROGRAM_END_ADDR)
+                );
+
+        throw std::runtime_error(err);
+    }
+
+    uint16_t addr = m_I;
+    for (uint8_t i = 0; i <= m_x; i++)
+    {
+        m_Memory[addr] = m_V[i];
         addr++;
     }
 }
-//
-//
+
 // Fx65 - LD Vx, [I]
 // Read registers V0 through Vx from memory starting at location I.
 //
 // The interpreter reads values from memory starting at location I into registers V0 through Vx.
 void Chip8::op_ldxi(void)
 {
-    // TODO
-    // make sure that I...I+15 don't go outside the memory boundaries
-    uint16_t addr = m_I;
-    for (auto v : m_V)
+    // Allow reading of data before PROGRAM_START.
+    if (m_I + m_x > PROGRAM_END_ADDR)
     {
-        m_Memory[addr] = v;
+        std::string err = fmt::format(
+                "Unable to execute 0x{op:04X} "
+                "I + V[0x{regX:X}] = 0x{I:04X} + 0x{valX:02X} = 0x{result:04X}. "
+                "Result must be within valid range, [0x0, 0x{end:03X}] "
+                ,fmt::arg("op", m_op)
+                ,fmt::arg("regX", m_x)
+                ,fmt::arg("I", m_I)
+                ,fmt::arg("valX", m_V[m_x])
+                ,fmt::arg("result", m_I + m_V[m_x])
+                ,fmt::arg("end", PROGRAM_END_ADDR)
+                );
+
+        throw std::runtime_error(err);
+    }
+
+    uint16_t addr = m_I;
+    for (uint8_t i = 0; i <= m_x; i++)
+    {
+        m_V[i] = m_Memory[addr];
         addr++;
     }
 }
@@ -748,46 +794,52 @@ void Chip8::setupOpTbl(void)
 
     m_op_tbl = 
     {
-        {0x0, &Chip8::op0    },
-        {0x1, &Chip8::op_jp  },
-        {0x2, &Chip8::op_call},
-        {0x3, &Chip8::op_se  },
-        {0x4, &Chip8::op_sne },
-        {0x5, &Chip8::op_sker},
-        {0x6, &Chip8::op_ldx },
-        {0x7, &Chip8::op_add },
-        {0x8, &Chip8::op8    },
-        {0x9, &Chip8::op_sner},
-        {0xA, &Chip8::op_ldi },
-        {0xB, &Chip8::op_jpr },
-        {0xC, &Chip8::op_rnd },
-        {0xD, &Chip8::op_drw },
-        {0xE, &Chip8::opE    },
-        {0xF, &Chip8::opF    },
+        {0x0, &Chip8::extendedOp },
+        {0x1, &Chip8::op_jp      },
+        {0x2, &Chip8::op_call    },
+        {0x3, &Chip8::op_se      },
+        {0x4, &Chip8::op_sne     },
+        {0x5, &Chip8::op_sker    },
+        {0x6, &Chip8::op_ldx     },
+        {0x7, &Chip8::op_add     },
+        {0x8, &Chip8::op8        },
+        {0x9, &Chip8::op_sner    },
+        {0xA, &Chip8::op_ldi     },
+        {0xB, &Chip8::op_jpr     },
+        {0xC, &Chip8::op_rnd     },
+        {0xD, &Chip8::op_drw     },
+        {0xE, &Chip8::extendedOp },
+        {0xF, &Chip8::extendedOp },
     };
 }
 
-// TODO
-// Is it possible to unite op0, opE and opF into a single method?
-// It looks like the only difference is what table needs to be used
-void Chip8::op0(void)
+void Chip8::extendedOp(void)
 {
-    (this->*m_op0_tbl.at(m_kk))();
+    std::unordered_map<uint8_t, InstructionHandler>* op_tbl{nullptr};
+    switch(m_OpId)
+    {
+        case 0x0:
+            op_tbl = &m_op0_tbl;
+            break;
+        case 0xE:
+            op_tbl = &m_opE_tbl;
+            break;
+        case 0xF:
+            op_tbl = &m_opF_tbl;
+            break;
+        default:
+            std::string err = fmt::format(
+                    "Unknown op identifier, 0x{:0X}", m_OpId
+                    );
+            throw std::runtime_error(err);
+    }
+
+    (this->*(op_tbl->at(m_kk)))();
 }
 
 void Chip8::op8(void)
 {
     (this->*m_op8_tbl.at(m_n))();
-}
-
-void Chip8::opE(void)
-{
-    (this->*m_opE_tbl.at(m_kk))();
-}
-
-void Chip8::opF(void)
-{
-    (this->*m_opF_tbl.at(m_kk))();
 }
 
 void Chip8::setupOp0Tbl(void)

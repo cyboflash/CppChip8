@@ -129,10 +129,8 @@ class Chip8
     void op_ldix(void);
     void op_ldxi(void);
 
-    void op0(void);
     void op8(void);
-    void opE(void);
-    void opF(void);
+    void extendedOp(void);
 
     void setupOpTbl(void);
     void setupOp0Tbl(void);
