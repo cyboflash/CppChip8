@@ -1376,39 +1376,130 @@ TEST_F(Chip8Fixture, Test_op_lddt)
 // Set Vx = delay timer value.
 //
 // The value of DT is placed into Vx.
-// TEST_F(Chip8Fixture, Test_op_lddt)
-// {
-//     for (auto i = 0; i < 100; i++)
-//     {
-//         uint8_t regX = getRandomRegister();
-//         uint8_t value = getRandomUint8();
+TEST_F(Chip8Fixture, Test_op_ldrdt)
+{
+    for (auto i = 0; i < 100; i++)
+    {
+        uint8_t regX = getRandomRegister();
+        uint8_t value = getRandomUint8();
+
+        uint16_t op = static_cast<uint16_t>(0x6000 | (0x0000 | (regX << 8)) | value);
+        w.writeOp(op);
+
+        op = static_cast<uint16_t>(0xF015 | (0x0000 | (regX << 8)));
+        w.writeOp(op);
+
+        op = static_cast<uint16_t>(0xF007 | (0x0000 | (regX << 8)));
+        w.writeOp(op);
+
+        w.done();
+
+        chip8.loadFile(w.filename);
+        chip8.emulateCycle();
+        chip8.emulateCycle();
+        chip8.emulateCycle();
+
+        auto actualValue = chip8.getV(regX);
+
+        EXPECT_EQ(value, actualValue)
+            << fmt::format(
+                    "Iteration: {i:}\n"
+                    "op: {op:X}\n"
+                    "regX: {regX:X}\n"
+                    ,fmt::arg("i", i)
+                    ,fmt::arg("op", op)
+                    ,fmt::arg("regX", regX)
+                    )
+            ; 
+
+        chip8.reset();
+        w.reset();
+    }
+}
+
+// Fx0A - LD Vx, K
+// Wait for a key press, store the value of the key in Vx.
 //
-//         uint16_t op = static_cast<uint16_t>(0x6000 | (0x0000 | (regX << 8)) | value);
-//         w.writeOp(op);
+// All execution stops until a key is pressed, then the value of that key is stored in Vx.
+TEST_F(Chip8Fixture, Test_op_ldk)
+{
+    for (auto i = 0; i < 100; i++)
+    {
+        bool isPressed = getRandomBool();
+        uint8_t key = getRandomKey();
+        chip8.setKey(key, isPressed);
+        uint8_t regX = getRandomRegister();
+        uint16_t op = static_cast<uint16_t>(0xF00A | (0x0000 | (regX << 8)));
+        auto oldPC = chip8.getPC();
+
+        w.writeOp(op);
+
+        w.done();
+
+        chip8.loadFile(w.filename);
+
+        chip8.emulateCycle();
+        auto currentPC = chip8.getPC();
+
+        EXPECT_EQ(isPressed ? oldPC + chip8.INSTRUCTION_SIZE_B : oldPC, currentPC)
+            << fmt::format(
+                    "Iteration: {i:}\n"
+                    "op: {op:X}\n"
+                    "regX: {regX:X}\n"
+                    "isPressed: {isPressed:}\n"
+                    "oldPC: {oldPC:X}\n"
+                    "currentPC: {currentPC:X}\n"
+                    ,fmt::arg("i", i)
+                    ,fmt::arg("op", op)
+                    ,fmt::arg("regX", regX)
+                    ,fmt::arg("isPressed", isPressed)
+                    ,fmt::arg("oldPC", oldPC)
+                    ,fmt::arg("currentPC", currentPC)
+                    )
+            ; 
+
+        chip8.reset();
+        w.reset();
+    }
+}
+
+// Fx18 - LD ST, Vx
+// Set sound timer = Vx.
 //
-//         op = static_cast<uint16_t>(0xF015 | (0x0000 | (regX << 8)));
-//         w.writeOp(op);
-//
-//         w.done();
-//
-//         chip8.loadFile(w.filename);
-//         chip8.emulateCycle();
-//         chip8.emulateCycle();
-//
-//         auto delayTimerValue = chip8.getDelayTimer();
-//
-//         EXPECT_EQ(value, delayTimerValue)
-//             << fmt::format(
-//                     "Iteration: {i:}\n"
-//                     "op: {op:X}\n"
-//                     "regX: {regX:X}\n"
-//                     ,fmt::arg("i", i)
-//                     ,fmt::arg("op", op)
-//                     ,fmt::arg("regX", regX)
-//                     )
-//             ; 
-//
-//         chip8.reset();
-//         w.reset();
-//     }
-// }
+// ST is set equal to the value of Vx.
+TEST_F(Chip8Fixture, Test_op_ldst)
+{
+    for (auto i = 0; i < 100; i++)
+    {
+        uint8_t regX = getRandomRegister();
+        uint8_t value = getRandomUint8();
+
+        uint16_t op = static_cast<uint16_t>(0x6000 | (0x0000 | (regX << 8)) | value);
+        w.writeOp(op);
+
+        op = static_cast<uint16_t>(0xF018 | (0x0000 | (regX << 8)));
+        w.writeOp(op);
+
+        w.done();
+
+        chip8.loadFile(w.filename);
+        chip8.emulateCycle();
+        chip8.emulateCycle();
+
+        auto delayTimerValue = chip8.getSoundTimer();
+
+        EXPECT_EQ(value, delayTimerValue)
+            << fmt::format(
+                    "Iteration: {i:}\n"
+                    "op: {op:X}\n"
+                    "regX: {regX:X}\n"
+                    ,fmt::arg("i", i)
+                    ,fmt::arg("op", op)
+                    ,fmt::arg("regX", regX)
+                    )
+            ; 
+
+        chip8.reset();
+        w.reset();
+    }
+}
