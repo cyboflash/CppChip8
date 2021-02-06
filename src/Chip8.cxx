@@ -12,19 +12,6 @@
 #include "Chip8.hxx"
 #include "IntRange.txx"
 
-constexpr uint16_t Chip8::PROGRAM_START_ADDR;
-constexpr uint16_t Chip8::PROGRAM_END_ADDR;
-
-constexpr uint8_t Chip8::REGISTER_CNT;
-constexpr uint8_t Chip8::REGISTER_RESET_VALUE;
-
-constexpr uint8_t Chip8::SP_RESET_VALUE;
-
-constexpr uint16_t Chip8::FONT_SPRITES_START_ADDR;
-constexpr uint16_t Chip8::FONT_SPRITES_END_ADDR;
-
-constexpr uint8_t Chip8::INSTRUCTION_SIZE_B;
-
 // TODO
 // 1. use fmt::format instead of formating cout through std:: and iomanip
 // 2. use spdlog for logging and not cout/cerr
@@ -656,10 +643,7 @@ void Chip8::op_ldst(void)
 // The values of I and Vx are added, and the results are stored in I.
 void Chip8::op_addi(void)
 {
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wconversion"
-    m_I += m_V[m_x];
-#pragma GCC diagnostic pop
+    m_I = (m_I + m_V[m_x]) & 0xFFF;
 }
 //
 //
@@ -962,18 +946,12 @@ void Chip8::executeOp(void)
 
 void Chip8::incrementPC(void)
 {
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wconversion"
-    m_PC += INSTRUCTION_SIZE_B;
-#pragma GCC diagnostic pop
+    m_PC = (m_PC + INSTRUCTION_SIZE_B) & 0x0FFF;
 }
 
 void Chip8::decrementPC(void)
 {
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wconversion"
-    m_PC -= INSTRUCTION_SIZE_B;
-#pragma GCC diagnostic pop
+    m_PC = (m_PC - INSTRUCTION_SIZE_B) & 0xFFF;
 }
 
 void Chip8::fetchOp(void)

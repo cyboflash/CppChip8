@@ -85,6 +85,10 @@ struct Chip8Fixture : public ::testing::Test
         std::uniform_int_distribution<uint8_t> distribution(0, 1);
         return 1 == distribution(generator);
     }
+    uint8_t getRandomHex()
+    {
+        return getRandomIntValue<uint8_t>(0, 0xF);
+    }
 
     uint8_t getRandomRegister()
     {
@@ -1495,6 +1499,99 @@ TEST_F(Chip8Fixture, Test_op_ldst)
                     "regX: {regX:X}\n"
                     ,fmt::arg("i", i)
                     ,fmt::arg("op", op)
+                    ,fmt::arg("regX", regX)
+                    )
+            ; 
+
+        chip8.reset();
+        w.reset();
+    }
+}
+
+// Fx1E - ADD I, Vx
+// Set I = I + Vx.
+//
+// The values of I and Vx are added, and the results are stored in I.
+TEST_F(Chip8Fixture, Test_op_addi)
+{
+    for (auto i = 0; i < 100; i++)
+    {
+        uint8_t regX = getRandomRegister();
+        uint8_t xVal = getRandomUint8();
+
+        uint16_t op = static_cast<uint16_t>(0x6000 | (0x0000 | (regX << 8)) | xVal);
+        w.writeOp(op);
+
+        uint16_t iVal = getRandomMemAddr();
+
+        op = static_cast<uint16_t>(0xA000 | iVal);
+        w.writeOp(op);
+
+        op = static_cast<uint16_t>(0xF01E | (0x0000 | (regX << 8)));
+        w.writeOp(op);
+
+        w.done();
+
+        chip8.loadFile(w.filename);
+        chip8.emulateCycle();
+        chip8.emulateCycle();
+        chip8.emulateCycle();
+
+        EXPECT_EQ((xVal + iVal) & 0xFFF, chip8.getI())
+            << fmt::format(
+                    "Iteration: {i:}\n"
+                    "op: {op:X}\n"
+                    "xVal: 0x{xVal:X}, {xVal:}\n"
+                    "iVal: 0x{iVal:X}, {iVal:}\n"
+                    "regX: 0x{regX:X}\n"
+                    ,fmt::arg("i", i)
+                    ,fmt::arg("op", op)
+                    ,fmt::arg("xVal", xVal)
+                    ,fmt::arg("iVal", iVal)
+                    ,fmt::arg("regX", regX)
+                    )
+            ; 
+
+        chip8.reset();
+        w.reset();
+    }
+}
+
+// Fx29 - LD F, Vx
+// Set I = location of sprite for digit Vx.
+//
+// The value of I is set to the location for the hexadecimal sprite corresponding to the value of Vx. See section 2.4, Display, for more information on the Chip-8 hexadecimal font.
+TEST_F(Chip8Fixture, Test_op_ldf)
+{
+    for (auto i = 0; i < 100; i++)
+    {
+        uint8_t regX = getRandomRegister();
+        uint8_t xVal = getRandomHex();
+
+        uint16_t op = static_cast<uint16_t>(0x6000 | (0x0000 | (regX << 8)) | xVal);
+        w.writeOp(op);
+
+        op = static_cast<uint16_t>(0xF029 | (0x0000 | (regX << 8)));
+
+        w.writeOp(op);
+
+        w.done();
+
+        chip8.loadFile(w.filename);
+        chip8.emulateCycle();
+        chip8.emulateCycle();
+
+        uint16_t iVal = chip8.getI();
+
+        EXPECT_EQ((Chip8::FONT_SPRITES_START_ADDR + 5*xVal) & 0xFFF, iVal)
+            << fmt::format(
+                    "Iteration: {i:}\n"
+                    "op: {op:X}\n"
+                    "xVal: 0x{xVal:X}, {xVal:}\n"
+                    "regX: 0x{regX:X}\n"
+                    ,fmt::arg("i", i)
+                    ,fmt::arg("op", op)
+                    ,fmt::arg("xVal", xVal)
                     ,fmt::arg("regX", regX)
                     )
             ; 
