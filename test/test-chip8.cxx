@@ -1600,3 +1600,88 @@ TEST_F(Chip8Fixture, Test_op_ldf)
         w.reset();
     }
 }
+// Fx55 - LD [I], Vx
+// Store registers V0 through Vx in memory starting at location I.
+//
+// The interpreter copies the values of registers V0 through Vx into memory, starting at the address in I.
+TEST_F(Chip8Fixture, Test_op_ldix)
+{
+    for (auto i = 0; i < 100; i++)
+    {
+        uint16_t iVal = getRandomMemAddr();
+
+        // load value into register I
+        uint16_t op = static_cast<uint16_t>(0xA000 | iVal);
+        w.writeOp(op);
+
+        uint8_t regX = getRandomRegister();
+        std::vector<uint8_t> xVal;
+        for (uint8_t j = 0; j <= regX; j++)
+        {
+            xVal.push_back(getRandomUint8());
+            uint16_t op = static_cast<uint16_t>(0x6000 | (0x0000 | (j << 8)) | xVal.back());
+            w.writeOp(op);
+        }
+        op = static_cast<uint16_t>(0xF055 | (0x0000 | (regX << 8)));
+        w.writeOp(op);
+
+        w.done();
+
+        chip8.loadFile(w.filename);
+        chip8.emulateCycle();
+        for (uint8_t j = 0; j <= regX; j++)
+        {
+            chip8.emulateCycle();
+        }
+
+        if ((iVal < Chip8::PROGRAM_START_ADDR) or (iVal + regX > Chip8::PROGRAM_END_ADDR))
+        {
+            EXPECT_THROW(chip8.emulateCycle(), std::runtime_error)
+                << fmt::format(
+                        "iteration = {i:}\n"
+                        "op = 0x{op:04X}\n"
+                        "iVal = 0x{iVal:04X}\n"
+                        "regX = 0x{regX:X}\n"
+                        "iVal + regX = 0x{sum:04X}\n"
+                        ,fmt::arg("iVal", iVal)
+                        ,fmt::arg("regX", regX)
+                        ,fmt::arg("sum", iVal + regX)
+                        ,fmt::arg("i", i)
+                        ,fmt::arg("op", op)
+                        )
+                ;
+        }
+        else
+        {
+            chip8.emulateCycle();
+            auto mem = chip8.readMemory(iVal, static_cast<uint16_t>(iVal + regX));
+            EXPECT_EQ(regX + 1, mem.size());
+            for (uint8_t j = 0; j <= regX; j++)
+            {
+                EXPECT_EQ(xVal[j], mem[j]) 
+                    << fmt::format(
+                            "iteration = {i:}\n"
+                            "op = 0x{op:04X}\n"
+                            "iVal = 0x{iVal:04X}\n"
+                            "regX = 0x{regX:X}\n"
+                            "iVal + regX = 0x{sum:04X}\n"
+                            "j = {j:}\n"
+                            "xVal[{j:}] = 0x{xValI:X}\n"
+                            "mem[{j:}] = 0x{memI:X}\n"
+                            ,fmt::arg("iVal", iVal)
+                            ,fmt::arg("regX", regX)
+                            ,fmt::arg("j", j)
+                            ,fmt::arg("xValI", xVal[j])
+                            ,fmt::arg("memI", mem[j])
+                            ,fmt::arg("i", i)
+                            ,fmt::arg("op", op)
+                            ,fmt::arg("sum", iVal + regX)
+                            )
+                    ;
+            }
+        }
+
+        chip8.reset();
+        w.reset();
+    }
+}
