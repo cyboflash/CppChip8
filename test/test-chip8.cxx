@@ -1685,3 +1685,125 @@ TEST_F(Chip8Fixture, Test_op_ldix)
         w.reset();
     }
 }
+
+// Fx65 - LD Vx, [I]
+// Read registers V0 through Vx from memory starting at location I.
+//
+// The interpreter reads values from memory starting at location I into registers V0 through Vx.
+TEST_F(Chip8Fixture, Test_op_ldxi)
+{
+    for (auto i = 0; i < 100; i++)
+    {
+        uint16_t iVal = 0;
+        do
+        {
+            iVal = getRandomMemAddr();
+        } while(iVal < Chip8::PROGRAM_START_ADDR + 0x0100);
+
+
+        // load value into register I
+        uint16_t op = static_cast<uint16_t>(0xA000 | iVal);
+        w.writeOp(op);
+
+        // store random values into memory
+        uint8_t regX = getRandomRegister();
+        std::vector<uint8_t> xVal;
+        for (uint8_t j = 0; j <= regX; j++)
+        {
+            xVal.push_back(getRandomUint8());
+            op = static_cast<uint16_t>(0x6000 | (0x0000 | (j << 8)) | xVal.back());
+            w.writeOp(op);
+        }
+        op = static_cast<uint16_t>(0xF055 | (0x0000 | (regX << 8)));
+        w.writeOp(op);
+
+        // read values from memory
+        op = static_cast<uint16_t>(0xF065 | (0x0000 | (regX << 8)));
+        w.writeOp(op);
+
+        w.done();
+
+        chip8.loadFile(w.filename);
+        chip8.emulateCycle();
+
+        for (uint8_t j = 0; j <= regX; j++)
+        {
+            chip8.emulateCycle();
+        }
+
+        if ((iVal < Chip8::PROGRAM_START_ADDR) or (iVal + regX > Chip8::PROGRAM_END_ADDR))
+        {
+            EXPECT_THROW(chip8.emulateCycle(), std::runtime_error)
+                << fmt::format(
+                        "iteration = {i:}\n"
+                        "op = 0x{op:04X}\n"
+                        "iVal = 0x{iVal:04X}\n"
+                        "regX = 0x{regX:X}\n"
+                        "iVal + regX = 0x{sum:04X}\n"
+                        ,fmt::arg("iVal", iVal)
+                        ,fmt::arg("regX", regX)
+                        ,fmt::arg("sum", iVal + regX)
+                        ,fmt::arg("i", i)
+                        ,fmt::arg("op", op)
+                        )
+                ;
+        }
+        else
+        {
+            chip8.emulateCycle();
+        }
+
+        if ((iVal < Chip8::PROGRAM_START_ADDR) or (iVal + regX > Chip8::PROGRAM_END_ADDR))
+        {
+            EXPECT_THROW(chip8.emulateCycle(), std::runtime_error)
+                << fmt::format(
+                        "iteration = {i:}\n"
+                        "op = 0x{op:04X}\n"
+                        "iVal = 0x{iVal:04X}\n"
+                        "regX = 0x{regX:X}\n"
+                        "iVal + regX = 0x{sum:04X}\n"
+                        ,fmt::arg("iVal", iVal)
+                        ,fmt::arg("regX", regX)
+                        ,fmt::arg("sum", iVal + regX)
+                        ,fmt::arg("i", i)
+                        ,fmt::arg("op", op)
+                        )
+                ;
+        }
+        else
+        {
+            chip8.emulateCycle();
+            auto mem = chip8.readMemory(iVal, static_cast<uint16_t>(iVal + regX));
+
+            EXPECT_EQ(regX + 1, mem.size());
+            for (uint8_t j = 0; j <= regX; j++)
+            {
+                uint8_t v = chip8.getV(j);
+                EXPECT_EQ(v, mem[j]) 
+                    << fmt::format(
+                            "iteration = {i:}\n"
+                            "op = 0x{op:04X}\n"
+                            "iVal = 0x{iVal:04X}\n"
+                            "regX = 0x{regX:X}\n"
+                            "iVal + regX = 0x{sum:04X}\n"
+                            "j = {j:}\n"
+                            "V[{j:}] = 0x{v:X}\n"
+                            "mem[{j:}] = 0x{memI:X}\n"
+                            ,fmt::arg("iVal", iVal)
+                            ,fmt::arg("regX", regX)
+                            ,fmt::arg("j", j)
+                            ,fmt::arg("v", v)
+                            ,fmt::arg("memI", mem[j])
+                            ,fmt::arg("i", i)
+                            ,fmt::arg("op", op)
+                            ,fmt::arg("sum", iVal + regX)
+                            )
+                    ;
+            }
+        }
+
+        chip8.reset();
+        w.reset();
+    }
+
+}
