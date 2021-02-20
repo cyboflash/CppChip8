@@ -33,8 +33,6 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(spdlog)
 if (NOT spdlog_POPULATED)
     FetchContent_Populate(spdlog)
-    # Optional => Set library build options
-    # https://github.com/gabime/spdlog/blob/v1.8.2/CMakeLists.txt
     set(SPDLOG_BUILD_EXAMPLES OFF)
     set(SPDLOG_BUILD_BENCH    OFF)
     set(SPDLOG_BUILD_TESTS    OFF)
