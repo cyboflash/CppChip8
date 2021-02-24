@@ -1,22 +1,11 @@
 #include <iostream>
-#include "Chip8.hxx"
+#include "Chip8Emulator.hxx"
 
-int main([[maybe_unused]] int argc, char** argv)
+int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
 {
-    Chip8 chip8;
-    chip8.loadFile(argv[1]);
+    Chip8Emulator emu;
     
-    // char k = '\0';
-    // while ('q' != k)
-    while (true)
-    {
-        chip8.emulateCycle();
-        if (chip8.isDrw())
-        {
-            chip8.displayGfx();
-            // std::cin >> k;
-        }
-    }
+    emu.run();
 
     return 0;
 }
