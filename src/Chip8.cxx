@@ -160,7 +160,8 @@ void Chip8::setKey(uint8_t nbr, bool isPressed)
     m_Keyboard[nbr] = isPressed;
 }
 
-const auto& Chip8::getGfx(void) const
+const std::vector<std::vector<bool>>& Chip8::getGfx(void) const
+// const auto& Chip8::getGfx(void) const
 {
     return m_Gfx;
 }
@@ -991,7 +992,7 @@ void Chip8::resetPC(void)
     m_PC = PROGRAM_START_ADDR;
 }
 
-void Chip8::loadFile(std::string filename)
+void Chip8::loadRom(const std::string& filename)
 {
     // TODO:
     // check if file exists

@@ -10,9 +10,9 @@ class Chip8
 {
     public:
     Chip8();
-    const auto& getGfx(void) const;
+    const std::vector<std::vector<bool>>& getGfx(void) const;
     uint8_t getLastGeneratedRnd(void) const;
-    void loadFile(std::string filename);
+    void loadRom(const std::string& filename);
     void displayState(void) const;
     void displayMemoryContents(uint16_t startAddr = 0x0, uint16_t endAddr = 0xFFF) const;
     void displayGfx() const;

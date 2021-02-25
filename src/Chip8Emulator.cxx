@@ -5,6 +5,11 @@
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include "Chip8Emulator.hxx"
 
+void Chip8Emulator::loadRom(const std::string& romPath)
+{
+    cpu.loadRom(romPath);
+}
+
 Chip8Emulator::Chip8Emulator() : 
     m_LoggerName{fmt::format("{}-Chip8Emulator", getpid())}, 
     m_Logger{spdlog::stdout_color_mt(m_LoggerName)},
@@ -76,9 +81,11 @@ Chip8Emulator::~Chip8Emulator()
 
 void Chip8Emulator::run(void)
 {
-    SDL_SetRenderDrawColor(m_Renderer.get(), 0, 255, 0, 255);
-    SDL_Event e;
+    // Clear screan
+    SDL_SetRenderDrawColor(m_Renderer.get(), 0, 0, 0, 255);
+    SDL_RenderClear(m_Renderer.get());
 
+    SDL_Event e;
     bool isQuit = false;
     while(not isQuit)
     {
@@ -99,20 +106,29 @@ void Chip8Emulator::run(void)
             break;
         }
 
-        // Clear screan
-        SDL_RenderClear(m_Renderer.get());
+        cpu.emulateCycle();
 
-        for (int row = 0; row < Chip8::GFX_ROWS; row++)
+        if (cpu.isDrw())
         {
-            for (int col = 0; col < Chip8::GFX_COLS; col++)
+            const auto& gfx = cpu.getGfx();
+            uint8_t rowIdx = 0; 
+            for (auto row : gfx)
             {
-                m_ForegroundBlock->render(col*m_ForegroundBlock->getWidth(), row*m_ForegroundBlock->getHeight());
+                uint8_t colIdx = 0;
+                for (auto pixel : row)
+                {
+                    m_Logger->debug(fmt::format("Drawing pixel at ({}, {})", rowIdx, colIdx));
+                    Block *const p_B = (true == pixel) ? m_ForegroundBlock.get() : m_BackgroundBlock.get();
+                    p_B->render(colIdx*p_B->getWidth(), rowIdx*p_B->getHeight());
+                    colIdx++;
+                }
+                rowIdx++;
             }
+            rowIdx = 0;
         }
 
         // Update screen
         SDL_RenderPresent(m_Renderer.get());
-        SDL_Delay(2000);
     }
 }
 

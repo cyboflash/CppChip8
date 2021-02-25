@@ -1,9 +1,10 @@
 #include <iostream>
 #include "Chip8Emulator.hxx"
 
-int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
+int main([[maybe_unused]] int argc, char** argv)
 {
     Chip8Emulator emu;
+    emu.loadRom(std::string(argv[1]));
     
     emu.run();
 

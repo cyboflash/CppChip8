@@ -172,7 +172,7 @@ TEST_F(Chip8Fixture, Test_op_jp)
         w.writeOp(op);
         w.done();
 
-        chip8.loadFile(w.filename);
+        chip8.loadRom(w.filename);
         chip8.emulateCycle();
 
         EXPECT_EQ(nnn, chip8.getPC())
@@ -199,7 +199,7 @@ TEST_F(Chip8Fixture, Test_op_call)
 
         auto oldPC = chip8.getPC() + Chip8::INSTRUCTION_SIZE_B;
 
-        chip8.loadFile(w.filename);
+        chip8.loadRom(w.filename);
         chip8.emulateCycle();
 
 
@@ -237,7 +237,7 @@ TEST_F(Chip8Fixture, Test_op_ldx)
             
         w.writeOp(op);
         w.done();
-        chip8.loadFile(w.filename);
+        chip8.loadRom(w.filename);
         chip8.emulateCycle();
 
         auto actualVal = chip8.getV(reg);
@@ -274,7 +274,7 @@ TEST_F(Chip8Fixture, Test_op_se)
         w.writeOp(op);
         w.done();
 
-        chip8.loadFile(w.filename);
+        chip8.loadRom(w.filename);
 
         auto oldPC = chip8.getPC();
         chip8.emulateCycle();
@@ -305,7 +305,7 @@ TEST_F(Chip8Fixture, Test_op_sne)
         w.writeOp(op);
         w.done();
 
-        chip8.loadFile(w.filename);
+        chip8.loadRom(w.filename);
 
         auto oldPC = chip8.getPC();
         chip8.emulateCycle();
@@ -340,7 +340,7 @@ TEST_F(Chip8Fixture, Test_op_sker)
 
         w.done();
 
-        chip8.loadFile(w.filename);
+        chip8.loadRom(w.filename);
 
         auto oldPC = chip8.getPC();
         chip8.emulateCycle();
@@ -381,7 +381,7 @@ TEST_F(Chip8Fixture, Test_op_add)
 
         w.done();
 
-        chip8.loadFile(w.filename);
+        chip8.loadRom(w.filename);
 
         chip8.emulateCycle();
         chip8.emulateCycle();
@@ -423,7 +423,7 @@ TEST_F(Chip8Fixture, Test_op_ldr)
 
         w.done();
 
-        chip8.loadFile(w.filename);
+        chip8.loadRom(w.filename);
 
         chip8.emulateCycle();
         chip8.emulateCycle();
@@ -469,7 +469,7 @@ TEST_F(Chip8Fixture, Test_op_or)
 
         w.done();
 
-        chip8.loadFile(w.filename);
+        chip8.loadRom(w.filename);
 
         chip8.emulateCycle();
         chip8.emulateCycle();
@@ -526,7 +526,7 @@ TEST_F(Chip8Fixture, Test_op_and)
 
         w.done();
 
-        chip8.loadFile(w.filename);
+        chip8.loadRom(w.filename);
 
         chip8.emulateCycle();
         chip8.emulateCycle();
@@ -583,7 +583,7 @@ TEST_F(Chip8Fixture, Test_op_xor)
 
         w.done();
 
-        chip8.loadFile(w.filename);
+        chip8.loadRom(w.filename);
 
         chip8.emulateCycle();
         chip8.emulateCycle();
@@ -639,7 +639,7 @@ TEST_F(Chip8Fixture, Test_op_addr)
 
         w.done();
 
-        chip8.loadFile(w.filename);
+        chip8.loadRom(w.filename);
 
         chip8.emulateCycle();
         chip8.emulateCycle();
@@ -706,7 +706,7 @@ TEST_F(Chip8Fixture, Test_op_sub)
 
         w.done();
 
-        chip8.loadFile(w.filename);
+        chip8.loadRom(w.filename);
 
         chip8.emulateCycle();
         chip8.emulateCycle();
@@ -772,7 +772,7 @@ TEST_F(Chip8Fixture, Test_op_shr)
 
         w.done();
 
-        chip8.loadFile(w.filename);
+        chip8.loadRom(w.filename);
 
         chip8.emulateCycle();
         chip8.emulateCycle();
@@ -842,7 +842,7 @@ TEST_F(Chip8Fixture, Test_op_subn)
 
         w.done();
 
-        chip8.loadFile(w.filename);
+        chip8.loadRom(w.filename);
 
         chip8.emulateCycle();
         chip8.emulateCycle();
@@ -922,7 +922,7 @@ TEST_F(Chip8Fixture, Test_op_shl)
 
         w.done();
 
-        chip8.loadFile(w.filename);
+        chip8.loadRom(w.filename);
 
         chip8.emulateCycle();
         chip8.emulateCycle();
@@ -1003,7 +1003,7 @@ TEST_F(Chip8Fixture, Test_op_sner)
 
         w.done();
 
-        chip8.loadFile(w.filename);
+        chip8.loadRom(w.filename);
 
         chip8.emulateCycle();
         chip8.emulateCycle();
@@ -1047,7 +1047,7 @@ TEST_F(Chip8Fixture, Test_op_ldi)
 
         w.done();
 
-        chip8.loadFile(w.filename);
+        chip8.loadRom(w.filename);
 
         chip8.emulateCycle();
 
@@ -1084,7 +1084,7 @@ TEST_F(Chip8Fixture, Test_op_jpr)
 
         w.done();
 
-        chip8.loadFile(w.filename);
+        chip8.loadRom(w.filename);
 
         chip8.emulateCycle();
         chip8.emulateCycle();
@@ -1123,7 +1123,7 @@ TEST_F(Chip8Fixture, Test_op_rnd)
         w.writeOp(op);
         w.done();
 
-        chip8.loadFile(w.filename);
+        chip8.loadRom(w.filename);
         chip8.emulateCycle();
 
         uint8_t valX = chip8.getV(regX);
@@ -1254,7 +1254,7 @@ TEST_F(Chip8Fixture, Test_op_skp)
 
         w.done();
 
-        chip8.loadFile(w.filename);
+        chip8.loadRom(w.filename);
         chip8.emulateCycle();
         auto oldPC = chip8.getPC();
         chip8.emulateCycle();
@@ -1306,7 +1306,7 @@ TEST_F(Chip8Fixture, Test_op_sknp)
 
         w.done();
 
-        chip8.loadFile(w.filename);
+        chip8.loadRom(w.filename);
         chip8.emulateCycle();
         auto oldPC = chip8.getPC();
         chip8.emulateCycle();
@@ -1354,7 +1354,7 @@ TEST_F(Chip8Fixture, Test_op_lddt)
 
         w.done();
 
-        chip8.loadFile(w.filename);
+        chip8.loadRom(w.filename);
         chip8.emulateCycle();
         chip8.emulateCycle();
 
@@ -1398,7 +1398,7 @@ TEST_F(Chip8Fixture, Test_op_ldrdt)
 
         w.done();
 
-        chip8.loadFile(w.filename);
+        chip8.loadRom(w.filename);
         chip8.emulateCycle();
         chip8.emulateCycle();
         chip8.emulateCycle();
@@ -1440,7 +1440,7 @@ TEST_F(Chip8Fixture, Test_op_ldk)
 
         w.done();
 
-        chip8.loadFile(w.filename);
+        chip8.loadRom(w.filename);
 
         chip8.emulateCycle();
         auto currentPC = chip8.getPC();
@@ -1486,7 +1486,7 @@ TEST_F(Chip8Fixture, Test_op_ldst)
 
         w.done();
 
-        chip8.loadFile(w.filename);
+        chip8.loadRom(w.filename);
         chip8.emulateCycle();
         chip8.emulateCycle();
 
@@ -1532,7 +1532,7 @@ TEST_F(Chip8Fixture, Test_op_addi)
 
         w.done();
 
-        chip8.loadFile(w.filename);
+        chip8.loadRom(w.filename);
         chip8.emulateCycle();
         chip8.emulateCycle();
         chip8.emulateCycle();
@@ -1577,7 +1577,7 @@ TEST_F(Chip8Fixture, Test_op_ldf)
 
         w.done();
 
-        chip8.loadFile(w.filename);
+        chip8.loadRom(w.filename);
         chip8.emulateCycle();
         chip8.emulateCycle();
 
@@ -1627,7 +1627,7 @@ TEST_F(Chip8Fixture, Test_op_ldix)
 
         w.done();
 
-        chip8.loadFile(w.filename);
+        chip8.loadRom(w.filename);
         chip8.emulateCycle();
         for (uint8_t j = 0; j <= regX; j++)
         {
@@ -1723,7 +1723,7 @@ TEST_F(Chip8Fixture, Test_op_ldxi)
 
         w.done();
 
-        chip8.loadFile(w.filename);
+        chip8.loadRom(w.filename);
         chip8.emulateCycle();
 
         for (uint8_t j = 0; j <= regX; j++)

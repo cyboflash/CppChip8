@@ -16,6 +16,7 @@ class Chip8Emulator
         Chip8Emulator();
         ~Chip8Emulator();
         void run(void);
+        void loadRom(const std::string& romPath);
     private:
                                                                                               //cols, rows
         static constexpr std::pair<uint32_t, uint32_t> SCREEN_SIZE_1280x1024 = std::make_pair(1280, 1024);
