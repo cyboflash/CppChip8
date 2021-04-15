@@ -2,12 +2,15 @@
 #include <fmt/core.h>
 #include <unistd.h>
 #include <exception>
+#include <chrono>
+
 #include <spdlog/sinks/stdout_color_sinks.h>
+
 #include "Chip8Emulator.hxx"
 
 void Chip8Emulator::loadRom(const std::string& romPath)
 {
-    cpu.loadRom(romPath);
+    cpu->loadRom(romPath);
 }
 
 Chip8Emulator::Chip8Emulator() : 
@@ -16,6 +19,8 @@ Chip8Emulator::Chip8Emulator() :
     m_Window{nullptr, SDL_DestroyWindow}
 {
     m_Logger->set_level(spdlog::level::debug);
+
+    cpu = std::make_unique<Chip8>(m_Logger);
 
     m_Logger->debug("Initializing SDL");
     if (0 != SDL_Init(SDL_INIT_EVERYTHING))
@@ -79,14 +84,77 @@ Chip8Emulator::~Chip8Emulator()
     SDL_Quit();
 }
 
-void Chip8Emulator::run(void)
+// void Chip8Emulator::drawGfx(void)
+// {
+//     const auto& gfx = cpu->getGfx();
+//     uint8_t rowIdx = 0; 
+//     for (auto row : gfx)
+//     {
+//         uint8_t colIdx = 0;
+//         for (auto pixel : row)
+//         {
+//             Block *const p_B = (true == pixel) ? m_ForegroundBlock.get() : m_BackgroundBlock.get();
+//             p_B->render(colIdx*p_B->getWidth(), rowIdx*p_B->getHeight());
+//             colIdx++;
+//         }
+//         rowIdx++;
+//     }
+//     rowIdx = 0;
+// }
+
+uint8_t Chip8Emulator::handleKeyPress(const SDL_KeyboardEvent &e)
+{
+    // 1 2 3 4        1 2 3 C
+    // Q W E R  --->  4 5 6 D
+    // A S D F        7 8 9 E
+    // Z X C V        A 0 B F
+    //
+    // 7 8 9 0        1 2 3 C
+    // u i o p  --->  4 5 6 D
+    // j k l ;        7 8 9 E
+    // n m , .        A 0 B F
+    static std::unordered_map<SDL_Keycode, uint8_t> keyMap = 
+    {
+        {SDLK_1, 1  }, {SDLK_2, 2}, {SDLK_3, 3  }, {SDLK_4, 0xC},
+        {SDLK_q, 4  }, {SDLK_w, 5}, {SDLK_e, 6  }, {SDLK_r, 0xD},
+        {SDLK_a, 7  }, {SDLK_s, 8}, {SDLK_d, 9  }, {SDLK_f, 0xE},
+        {SDLK_z, 0xA}, {SDLK_x, 0}, {SDLK_c, 0xB}, {SDLK_v, 0xF},
+
+        {SDLK_7, 1  }, {SDLK_8, 2}, {SDLK_9, 3      }, {SDLK_0, 0xC        },
+        {SDLK_u, 4  }, {SDLK_i, 5}, {SDLK_o, 6      }, {SDLK_p, 0xD        },
+        {SDLK_j, 7  }, {SDLK_k, 8}, {SDLK_l, 9      }, {SDLK_SEMICOLON, 0xE},
+        {SDLK_n, 0xA}, {SDLK_m, 0}, {SDLK_COMMA, 0xB}, {SDLK_PERIOD, 0xF   }
+    };
+
+    // uint8_t* keyboardState = SDL_GetKeyboardState(nullptr);
+
+    uint8_t pressedKey = keyMap[e.keysym.sym];
+    m_Logger->debug(fmt::format("Pressed {} key", pressedKey));
+    cpu->setKey(pressedKey, Chip8::KEY_PRESSED_VALUE);
+    return pressedKey;
+}
+
+void Chip8Emulator::clearScreen(void)
 {
     // Clear screan
-    SDL_SetRenderDrawColor(m_Renderer.get(), 0, 0, 0, 255);
+    SDL_SetRenderDrawColor(m_Renderer.get(), 
+            CLEAR_SCREEN_COLOR.r, 
+            CLEAR_SCREEN_COLOR.g, 
+            CLEAR_SCREEN_COLOR.b, 
+            CLEAR_SCREEN_COLOR.a
+            );
     SDL_RenderClear(m_Renderer.get());
+}
+
+typedef std::chrono::nanoseconds ClockResolution;
+void Chip8Emulator::run(void)
+{
+    clearScreen();
 
     SDL_Event e;
-    bool isQuit = false;
+    bool isQuit = false,
+         isKeyPressed = false;
+    uint8_t pressedKey;
     while(not isQuit)
     {
         while (0 != SDL_PollEvent(&e))
@@ -96,6 +164,17 @@ void Chip8Emulator::run(void)
                 case SDL_QUIT:
                     isQuit = true;
                     break;
+
+                    // https://retrocomputing.stackexchange.com/a/361
+                    // https://retrocomputing.stackexchange.com/questions/358/how-are-held-down-keys-handled-in-chip-8/361#361
+                case SDL_KEYUP:
+                    if (SDL_RELEASED == e.key.state)
+                    {
+                        pressedKey = handleKeyPress(e.key);
+                        isKeyPressed = true;
+                    }
+                    break;
+
                 default:
                     break;
             }
@@ -106,25 +185,17 @@ void Chip8Emulator::run(void)
             break;
         }
 
-        cpu.emulateCycle();
+        cpu->emulateCycle();
 
-        if (cpu.isDrw())
+        if(isKeyPressed)
         {
-            const auto& gfx = cpu.getGfx();
-            uint8_t rowIdx = 0; 
-            for (auto row : gfx)
-            {
-                uint8_t colIdx = 0;
-                for (auto pixel : row)
-                {
-                    m_Logger->debug(fmt::format("Drawing pixel at ({}, {})", rowIdx, colIdx));
-                    Block *const p_B = (true == pixel) ? m_ForegroundBlock.get() : m_BackgroundBlock.get();
-                    p_B->render(colIdx*p_B->getWidth(), rowIdx*p_B->getHeight());
-                    colIdx++;
-                }
-                rowIdx++;
-            }
-            rowIdx = 0;
+            isKeyPressed = false;
+            cpu->setKey(pressedKey, Chip8::KEY_NOT_PRESSED_VALUE);
+        }
+
+        if (cpu->isDrw())
+        {
+            drawGfx();
         }
 
         // Update screen

@@ -62,13 +62,16 @@ struct RomWriter
     std::ofstream rom;
 };
 
+
+Chip8 chip8;
+
 struct Chip8Fixture : public ::testing::Test
 {
-    Chip8 chip8;
     RomWriter w;
 
     void SetUp(void)
     {
+        chip8.reset();
     }
 
     template <typename T = uint8_t>
@@ -1105,6 +1108,39 @@ TEST_F(Chip8Fixture, Test_op_jpr)
         chip8.reset();
         w.reset();
     }
+}
+
+TEST_F(Chip8Fixture, Test_op_gfx1)
+{
+
+    std::vector<uint8_t> data = 
+    {
+        0xF0, 0x80, 0x80, 0xF0
+    };
+    chip8.writeProgramMemory(Chip8::PROGRAM_START_ADDR + 0x100, data);
+
+    // write row 16, col 32
+    data = 
+    {
+        // store 16 to register 0, row 16
+        0x60, 0x10,
+        // store 32 to register 1, col 32
+        0x61, 0x20, 
+        // load I with 0x100, start address of the sprite
+        0xA3, 0x00,
+
+        // draw 
+        0xD1, 0x04
+    };
+    chip8.writeProgramMemory(Chip8::PROGRAM_START_ADDR, data);
+
+    for (size_t i = 0; i < data.size()/2; i++)
+    {
+        chip8.emulateCycle();
+    }
+    EXPECT_TRUE(false)
+        << chip8.gfxString();
+
 }
 
 // Cxkk - RND Vx, byte

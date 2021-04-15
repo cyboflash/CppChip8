@@ -4,22 +4,30 @@
 #include <vector>
 #include <stack>
 #include <unordered_map>
-
+#include <memory>
+#include <bitset>
+#include <spdlog/spdlog.h>
 
 class Chip8
 {
     public:
-    Chip8();
-    const std::vector<std::vector<bool>>& getGfx(void) const;
+    static constexpr uint8_t GFX_ROWS = 32;
+    static constexpr uint8_t GFX_COLS = 64;
+
+    Chip8(std::shared_ptr<spdlog::logger> logger = nullptr);
+    const std::bitset<GFX_ROWS*GFX_COLS>& getGfx(void) const;
     uint8_t getLastGeneratedRnd(void) const;
     void loadRom(const std::string& filename);
     void displayState(void) const;
     void displayMemoryContents(uint16_t startAddr = 0x0, uint16_t endAddr = 0xFFF) const;
-    void displayGfx() const;
+    std::string gfxString() const;
     bool isDrw(void) const;
     void reset(void);
     void run(void);
     std::vector<uint8_t> readMemory(uint16_t startAddr, uint16_t endAddr) const;
+#ifdef TEST_PACKAGE
+    void writeProgramMemory(uint16_t startAddr, const std::vector<uint8_t>& data);
+#endif
     uint16_t getPC() const;
     uint8_t getSP() const;
     const std::stack<uint16_t>& getStack() const;
@@ -46,8 +54,6 @@ class Chip8
 
     static constexpr uint8_t INSTRUCTION_SIZE_B = 2;
 
-    static constexpr uint8_t GFX_ROWS = 32;
-    static constexpr uint8_t GFX_COLS = 64;
 
     static constexpr uint8_t KEYBOARD_SIZE = 16;
     static constexpr bool KEY_PRESSED_VALUE = true;
@@ -55,6 +61,9 @@ class Chip8
     static constexpr bool KEYBOARD_RESET_VALUE = KEY_NOT_PRESSED_VALUE;
 
     private:
+    // https://github.com/gabime/spdlog/wiki/2.-Creating-loggers
+    std::string m_LoggerName;
+    std::shared_ptr<spdlog::logger> m_Logger;
 
     typedef void (Chip8::*InstructionHandler)(void);
 
@@ -147,7 +156,7 @@ class Chip8
     uint64_t m_CycleCnt;
     std::vector<bool> m_Keyboard;
     bool m_IsDrw;
-    std::vector<uint8_t> m_Memory;
+    std::array<uint8_t, MEMORY_SIZE_B> m_Memory;
     uint8_t m_SP;
     uint16_t m_PC;
     std::vector<uint8_t> m_V;
@@ -163,6 +172,6 @@ class Chip8
     uint8_t m_OpId;
     uint8_t m_DelayTimer;
     uint8_t m_SoundTimer;
-    std::vector<std::vector<bool>> m_Gfx;
+    std::bitset<GFX_ROWS*GFX_COLS> m_Gfx;
     
 };

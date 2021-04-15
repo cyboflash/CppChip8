@@ -4,11 +4,12 @@ cmake_minimum_required(VERSION 3.19.5)
 
 get_filename_component(Project ${CMAKE_CURRENT_SOURCE_DIR} NAME)
 string(REPLACE " " "-" Project ${Project})
-project(${Project} CXX)
+project(${Project} CXX C)
 message(STATUS "Project: " ${Project})
 
 set(CMAKE_VERBOSE_MAKEFILE ON)
 set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_C_STANDARD 17)
 
 include(FetchContent)
 
@@ -99,6 +100,7 @@ target_link_libraries(${Executable} PRIVATE ${Library} ${LinkLibraries})
 option(BUILD_TEST_PACKAGE "Build unit tests" ON)
 
 if (BUILD_TEST_PACKAGE)
+    add_definitions(-DTEST_PACKAGE)
     enable_testing()
     include(GoogleTest)
     add_subdirectory(test)

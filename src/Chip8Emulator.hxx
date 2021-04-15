@@ -23,6 +23,8 @@ class Chip8Emulator
         static constexpr SDL_Color BACKGROUND_COLOR = {0, 0, 0, 255}; //Black
         static constexpr SDL_Color FOREGROUND_COLOR = {255, 255, 255, 255}; //White
         static constexpr SDL_Color DEFAULT_BLOCK_COLOR = FOREGROUND_COLOR;
+        static constexpr SDL_Color CLEAR_SCREEN_COLOR = BACKGROUND_COLOR;
+        static constexpr uint16_t FREQUENCY_MHZ = 500;
 
         class Block
         {
@@ -39,12 +41,16 @@ class Chip8Emulator
                 int m_Width, m_Height;
         };
 
-        Chip8 cpu;
+        std::unique_ptr<Chip8> cpu;
         // https://github.com/gabime/spdlog/wiki/2.-Creating-loggers
         std::string m_LoggerName;
         std::shared_ptr<spdlog::logger> m_Logger;
         std::unique_ptr<SDL_Window, decltype(&SDL_DestroyWindow)> m_Window;
         std::shared_ptr<SDL_Renderer> m_Renderer;
+
+        void drawGfx(void);
+        void clearScreen(void);
+        uint8_t handleKeyPress(const SDL_KeyboardEvent &e);
 
         std::unique_ptr<Block> m_BackgroundBlock;
         std::unique_ptr<Block> m_ForegroundBlock;

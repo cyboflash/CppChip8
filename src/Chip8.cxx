@@ -7,7 +7,11 @@
 #include <ios>
 #include <iostream>
 #include <random>
+
+#include <unistd.h>
+
 #include <fmt/core.h>
+#include <spdlog/sinks/stdout_color_sinks.h>
 
 #include "Chip8.hxx"
 #include "IntRange.txx"
@@ -160,8 +164,7 @@ void Chip8::setKey(uint8_t nbr, bool isPressed)
     m_Keyboard[nbr] = isPressed;
 }
 
-const std::vector<std::vector<bool>>& Chip8::getGfx(void) const
-// const auto& Chip8::getGfx(void) const
+const std::bitset<Chip8::GFX_ROWS*Chip8::GFX_COLS>& Chip8::getGfx(void) const
 {
     return m_Gfx;
 }
@@ -180,7 +183,34 @@ uint8_t Chip8::generateRandomUint8(void) const
 
     return distribution(generator);
 }
+#ifdef TEST_PACKAGE
+void Chip8::writeProgramMemory(uint16_t startAddr, const std::vector<uint8_t>& data)
+{
+    if ((startAddr < PROGRAM_START_ADDR) or ((startAddr + data.size()) > PROGRAM_END_ADDR))
+    {
+        std::string err = "Unable to write data to memory. ";
+        err += "One of the following is happening: ";
+        err += "1. Starting address is less then allowed program start address, ";
+        err += fmt::format("starting address: 0x{:X}, program start address: 0x{:X}\n", 
+                startAddr, PROGRAM_START_ADDR);
+        err += "2. Starting address is greater then allowed program end address, ";
+        err += fmt::format("starting address: 0x{:X}, program end address: 0x{:X}\n",
+                startAddr, PROGRAM_END_ADDR);
+        err += "3. Combination of starting address and data size is greater then allowed program end address, ";
+        err += fmt::format("starting address: 0x{:X}, data size: {}, program end address: 0x{:X}\n",
+                startAddr, data.size(), PROGRAM_END_ADDR);
 
+        throw std::runtime_error(err);
+    }
+
+    size_t addr = startAddr;
+    for (auto byte : data)
+    {
+        m_Memory[addr] = byte;
+        addr++;
+    }
+}
+#endif
 
 // I think it is Ok to return a whole vector. Compiler should be able to do
 // a return value optimization, RVO
@@ -192,7 +222,7 @@ std::vector<uint8_t> Chip8::readMemory(uint16_t startAddr, uint16_t endAddr) con
         err += fmt::format("Must be between 0x{:04X} and 0x{:04X}.", PROGRAM_START_ADDR, PROGRAM_END_ADDR);
         err += fmt::format("starting address is 0x{:04X}", startAddr);
         err += fmt::format("ending address is 0x{:04X}", endAddr);
-        throw std::runtime_error(err.c_str());
+        throw std::runtime_error(err);
     }
 
     std::vector<uint8_t> ret(m_Memory.begin() + startAddr, m_Memory.begin() + endAddr + 1);
@@ -236,7 +266,7 @@ bool Chip8::getKey(uint8_t nbr)
     if (nbr >= KEYBOARD_SIZE)
     {
         std::string err = fmt::format(
-                "Keyboard key: 0x{:0X} is nvalid. Valid range is [0,0x{:0X}]",
+                "Keyboard key: 0x{:0X} is invalid. Valid range is [0,0x{:0X}]",
                 nbr, KEYBOARD_SIZE-1
                 );
         throw std::runtime_error(err);
@@ -524,26 +554,24 @@ void Chip8::op_rnd(void)
 void Chip8::op_drw(void)
 {
     m_V[0xF] = 0;
-    for (uint8_t row = 0; row < m_n; row++)
+    for (uint8_t spriteRow = 0; spriteRow < m_n; spriteRow++)
     {
-        uint8_t spriteByte = m_Memory[m_I + row];
-        for (uint8_t col = 0; col < 8; col++)
+        uint8_t spriteByte = m_Memory[m_I + spriteRow];
+        for (uint8_t spriteCol = 0; spriteCol < 8; spriteCol++)
         {
-            uint8_t spritePixel = static_cast<uint8_t>(spriteByte & (0x80 >> col));
-            bool oldGfx = m_Gfx[(m_V[m_y] + row) % GFX_ROWS][(m_V[m_x] + col) % GFX_COLS];
-            bool newGfx = oldGfx;
+            bool spritePixel = (0 == static_cast<uint8_t>(spriteByte & (0x80 >> spriteCol))) ? false : true;
+            unsigned gfxRow = (m_V[m_y] + spriteRow)*GFX_COLS;
+            unsigned gfxCol = m_V[m_x] + spriteCol;
 
-            // set newGfx explicitly instead of relying on implicit conversion
-            // of spritePixel to boolean. i think it makes code more understandable
-            newGfx = newGfx xor (spritePixel ? true : false);
-
-            m_Gfx[(m_V[m_y] + row) % GFX_ROWS][(m_V[m_x] + col) % GFX_COLS] = newGfx;
+            bool oldPixel = m_Gfx[gfxRow + gfxCol];
+            bool newPixel = oldPixel xor spritePixel;
+            m_Gfx[gfxRow + gfxCol] = newPixel;
 
             if (0 == m_V[0xF])
             {
                 // set the flag explicilty instead of relying on implicit conversion
                 // of bool to int. i think it makes the code more understandable
-                m_V[0xF] = ((true == oldGfx) and (false == newGfx)) ? 1 : 0;
+                m_V[0xF] = ((true == oldPixel) and (false == newPixel)) ? 1 : 0;
             }
         }
     }
@@ -764,8 +792,18 @@ void Chip8::run(void)
     emulateCycle();
 }
 
-Chip8::Chip8()
+Chip8::Chip8(std::shared_ptr<spdlog::logger> logger)
 {
+    if (nullptr == logger)
+    {
+        m_LoggerName = fmt::format("{}-Chip8", getpid());
+        m_Logger = spdlog::stdout_color_mt(m_LoggerName);
+    }
+    else
+    {
+        m_Logger = logger;
+    }
+
     setupOpTbl();
     reset();
 }
@@ -902,9 +940,7 @@ void Chip8::reset(void)
 
 void Chip8::resetGfx(void)
 {
-    m_Gfx = std::vector<std::vector<bool>>(
-        GFX_ROWS, std::vector<bool>(GFX_COLS, GFX_RESET_VALUE)
-    );
+    m_Gfx.reset();
 }
 
 void Chip8::emulateCycle(void)
@@ -922,25 +958,16 @@ void Chip8::executeOp(void)
 {
     try
     {
+        displayOp();
         (this->*m_op_tbl.at(m_OpId))();
     }
     catch (const std::out_of_range &e)
     {
-        // save the stream state
-        std::ios_base::fmtflags flags(std::cerr.flags());
-        auto originalWidth = std::cerr.width();
-        auto originalFill = std::cerr.fill(); 
+        std::string err = fmt::format(
+                "Unsupported opcode: 0x{:04X}", m_op
+                );
 
-        std::cerr << "Unsupported opcode: ";
-        std::cerr << std::uppercase << std::right << std::hex;
-        std::cerr << "0x" << std::setfill('0') << std::setw(4);
-        std::cerr << m_op << "\n";
-
-        // restore the stream state
-        std::cerr.fill(originalFill);
-        std::cerr.width(originalWidth);
-        std::cerr.flags(flags); 
-
+        m_Logger->error(err);
         throw;
     }
 }
@@ -1007,28 +1034,15 @@ void Chip8::loadRom(const std::string& filename)
         throw std::runtime_error("Unable to open " + filename);
     }
 
-    rom.seekg(0, rom.end);
-    auto romSize = rom.tellg();
-    rom.seekg(0, rom.beg);
-
-    // TODO:
-    // check that rom size is not larger than the whole memory 
-    // also check rom size is not 0
-    
     // Stop eating new lines in binary mode!!! Just a little paranoia :). std::ifsteam::binary should
-    // not ignore whitespace, but based on my reading online it doesn't always happen.
+    // not ignore whitespace, but based on my online reading it doesn't always happen.
     rom.unsetf(std::ios::skipws);
 
-    // TODO:
-    // How do I insert only MEMORY_SIZE_B elements from istream_iterator
-    m_Memory.insert(m_Memory.begin() + PROGRAM_START_ADDR, 
-            std::istream_iterator<uint8_t>(rom),
-            std::istream_iterator<uint8_t>());
+    rom.read(reinterpret_cast<char *>(&m_Memory[PROGRAM_START_ADDR]), PROGRAM_END_ADDR - PROGRAM_START_ADDR + 1);
 }
 void Chip8::resetMemory(void)
 {
     // do this in case large rom was loaded. this is a precaution.
-    m_Memory.resize(MEMORY_SIZE_B);
     std::fill(m_Memory.begin(), m_Memory.begin() + FONT_SPRITES_START_ADDR, MEMORY_RESET_VALUE);
     std::fill(m_Memory.begin() + FONT_SPRITES_END_ADDR + 1, m_Memory.end(), MEMORY_RESET_VALUE);
 
@@ -1053,27 +1067,45 @@ bool Chip8::isDrw() const
     return m_IsDrw;
 }
 
-void Chip8::displayGfx() const
+std::string Chip8::gfxString() const
 {
-    for (const auto& r : m_Gfx)
+    // need extra GFX_ROWS-1  for new lines
+    std::string output(GFX_ROWS*GFX_COLS + GFX_ROWS-1, '\n');
+
+    // the size of the output is slightly larger than the size of the gfx screen
+    // because we need to add new lines to the output
+    unsigned strOffset = 0;
+    for (std::size_t row = 0; row < GFX_ROWS; row++)
     {
-        for (const auto& c : r)
+        for(std::size_t col = 0; col < GFX_COLS; col++)
         {
-            std::cout << (c ? "*" : " ");
+            output[row*GFX_COLS + col + strOffset] = m_Gfx[row*GFX_COLS + col] ? '*' : ' ';
         }
-        std::cout << "\n";
+        strOffset++;
     }
+
+    return output;
 }
 
 void Chip8::displayOp(void) const
 {
-    std::cout << fmt::format("m_op: 0x{:>04X}\n", m_op);
-    std::cout << fmt::format("m_OpId: 0x{:>01X}", m_OpId);
-    std::cout << fmt::format(", m_x: 0x{:>01X}", m_x);
-    std::cout << fmt::format(", m_y: 0x{:>01X}", m_y);
-    std::cout << fmt::format(", m_n: 0x{:>01X}", m_n);
-    std::cout << fmt::format(", m_kk: 0x{:>02X}", m_kk);
-    std::cout << fmt::format(", m_nnn: 0x{:>03X}\n", m_nnn);
+    m_Logger->debug(fmt::format(
+                "m_op: 0x{:>04X}\n"
+                "m_OpId: 0x{:>01X}"
+                ", m_x: 0x{:>01X}"
+                ", m_y: 0x{:>01X}"
+                ", m_n: 0x{:>01X}"
+                ", m_kk: 0x{:>02X}"
+                ", m_nnn: 0x{:>03X}\n"
+                ,m_op 
+                , m_OpId
+                , m_x
+                , m_y
+                , m_n
+                , m_kk
+                , m_nnn
+                )
+            );
 }
 
 void Chip8::displayRegisters(void) const
