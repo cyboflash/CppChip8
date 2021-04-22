@@ -12,9 +12,9 @@
 
 #include <fmt/core.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
+#include <spdlog/spdlog.h>
 
 #include "Chip8.hxx"
-#include "IntRange.txx"
 
 // TODO
 // 1. use fmt::format instead of formating cout through std:: and iomanip
@@ -164,7 +164,7 @@ void Chip8::setKey(uint8_t nbr, bool isPressed)
     m_Keyboard[nbr] = isPressed;
 }
 
-const std::bitset<Chip8::GFX_ROWS*Chip8::GFX_COLS>& Chip8::getGfx(void) const
+const Bitset2D<Chip8::GFX_ROWS, Chip8::GFX_COLS>& Chip8::getGfx(void) const
 {
     return m_Gfx;
 }
@@ -560,12 +560,12 @@ void Chip8::op_drw(void)
         for (uint8_t spriteCol = 0; spriteCol < 8; spriteCol++)
         {
             bool spritePixel = (0 == static_cast<uint8_t>(spriteByte & (0x80 >> spriteCol))) ? false : true;
-            unsigned gfxRow = (m_V[m_y] + spriteRow)*GFX_COLS;
+            unsigned gfxRow = m_V[m_y] + spriteRow;
             unsigned gfxCol = m_V[m_x] + spriteCol;
 
-            bool oldPixel = m_Gfx[gfxRow + gfxCol];
+            bool oldPixel = m_Gfx(gfxRow, gfxCol);
             bool newPixel = oldPixel xor spritePixel;
-            m_Gfx[gfxRow + gfxCol] = newPixel;
+            m_Gfx(gfxRow, gfxCol) = newPixel;
 
             if (0 == m_V[0xF])
             {
@@ -606,7 +606,7 @@ void Chip8::op_sknp(void)
     // the size of the keyboard. another approach
     // would be to generate an exception. for now let's 
     // stick with the remainder
-    if (not m_Keyboard[m_V[m_x] % KEYBOARD_SIZE])
+    if (not (m_Keyboard[m_V[m_x] % KEYBOARD_SIZE]))
     {
         incrementPC();
     }
@@ -917,11 +917,7 @@ void Chip8::setupOpFTbl(void)
 
 void Chip8::resetKeyboard(void)
 {
-    m_Keyboard.reserve(KEYBOARD_SIZE);
-
-    // according to https://stackoverflow.com/a/48486799/1636521
-    // assign is faster
-    m_Keyboard.assign(m_Keyboard.size(), KEYBOARD_RESET_VALUE);
+    m_Keyboard.reset();
 }
 
 void Chip8::reset(void)
@@ -1079,7 +1075,7 @@ std::string Chip8::gfxString() const
     {
         for(std::size_t col = 0; col < GFX_COLS; col++)
         {
-            output[row*GFX_COLS + col + strOffset] = m_Gfx[row*GFX_COLS + col] ? '*' : ' ';
+            output[row*GFX_COLS + col + strOffset] = m_Gfx(row, col) ? '*' : ' ';
         }
         strOffset++;
     }
@@ -1089,7 +1085,8 @@ std::string Chip8::gfxString() const
 
 void Chip8::displayOp(void) const
 {
-    m_Logger->debug(fmt::format(
+    SPDLOG_LOGGER_TRACE(m_Logger, 
+            fmt::format(
                 "m_op: 0x{:>04X}\n"
                 "m_OpId: 0x{:>01X}"
                 ", m_x: 0x{:>01X}"

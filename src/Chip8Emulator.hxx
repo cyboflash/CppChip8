@@ -1,6 +1,6 @@
 #pragma once
 #include <memory>
-#include <spdlog/spdlog.h>
+#include <spdlog/logger.h>
 #include <SDL.h>
 
 #include "Chip8.hxx"

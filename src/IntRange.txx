@@ -1,3 +1,4 @@
+#pragma once
 // inspired by https://stackoverflow.com/a/64351208/1636521
 template<typename IntType = int>
 class IntRange {

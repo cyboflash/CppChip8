@@ -5,6 +5,7 @@
 #include <chrono>
 
 #include <spdlog/sinks/stdout_color_sinks.h>
+#include <spdlog/spdlog.h>
 
 #include "Chip8Emulator.hxx"
 
@@ -18,19 +19,19 @@ Chip8Emulator::Chip8Emulator() :
     m_Logger{spdlog::stdout_color_mt(m_LoggerName)},
     m_Window{nullptr, SDL_DestroyWindow}
 {
-    m_Logger->set_level(spdlog::level::debug);
+    m_Logger->set_level(spdlog::level::trace);
 
     cpu = std::make_unique<Chip8>(m_Logger);
 
-    m_Logger->debug("Initializing SDL");
+    SPDLOG_LOGGER_TRACE(m_Logger, "Initializing SDL");
     if (0 != SDL_Init(SDL_INIT_EVERYTHING))
     {
         std::string err = fmt::format("Unable to initialize SDL: {}", SDL_GetError());
-        m_Logger->error(err);
+        SPDLOG_LOGGER_ERROR(m_Logger, err);
         throw std::runtime_error(err);
     }
 
-    m_Logger->debug("Creating a window");
+    SPDLOG_LOGGER_TRACE(m_Logger, "Creating a window");
     m_Window.reset(SDL_CreateWindow(
                 "Chip8 Emulator", 
                 SDL_WINDOWPOS_CENTERED, 
@@ -42,12 +43,12 @@ Chip8Emulator::Chip8Emulator() :
     if (nullptr == m_Window)
     {
         std::string err = fmt::format("Unable to create a main window: {}", SDL_GetError());
-        m_Logger->error(err);
+        SPDLOG_LOGGER_ERROR(m_Logger, err);
         SDL_Quit();
         throw std::runtime_error(err);
     }
 
-    m_Logger->debug("Creating a renderer");
+    SPDLOG_LOGGER_TRACE(m_Logger, "Creating a renderer");
     m_Renderer.reset(
             SDL_CreateRenderer(m_Window.get(), -1, SDL_RENDERER_ACCELERATED),
             SDL_RendererDeleter()
@@ -55,7 +56,7 @@ Chip8Emulator::Chip8Emulator() :
     if (nullptr == m_Renderer)
     {
         std::string err = fmt::format("Unable to create a renderer for main window: {}", SDL_GetError());
-        m_Logger->error(err);
+        SPDLOG_LOGGER_ERROR(m_Logger, err);
         SDL_DestroyRenderer(m_Renderer.get());
         SDL_Quit();
         throw std::runtime_error(err);
@@ -84,23 +85,18 @@ Chip8Emulator::~Chip8Emulator()
     SDL_Quit();
 }
 
-// void Chip8Emulator::drawGfx(void)
-// {
-//     const auto& gfx = cpu->getGfx();
-//     uint8_t rowIdx = 0; 
-//     for (auto row : gfx)
-//     {
-//         uint8_t colIdx = 0;
-//         for (auto pixel : row)
-//         {
-//             Block *const p_B = (true == pixel) ? m_ForegroundBlock.get() : m_BackgroundBlock.get();
-//             p_B->render(colIdx*p_B->getWidth(), rowIdx*p_B->getHeight());
-//             colIdx++;
-//         }
-//         rowIdx++;
-//     }
-//     rowIdx = 0;
-// }
+void Chip8Emulator::drawGfx(void)
+{
+    const auto& gfx = cpu->getGfx();
+    for (auto row = 0; row < Chip8::GFX_ROWS; row++)
+    {
+        for (auto col = 0; col < Chip8::GFX_COLS; col++)
+        {
+                Block *const p_B = (true == gfx(row, col)) ? m_ForegroundBlock.get() : m_BackgroundBlock.get();
+                p_B->render(col*p_B->getWidth(), row*p_B->getHeight());
+        }
+    }
+}
 
 uint8_t Chip8Emulator::handleKeyPress(const SDL_KeyboardEvent &e)
 {
@@ -129,7 +125,7 @@ uint8_t Chip8Emulator::handleKeyPress(const SDL_KeyboardEvent &e)
     // uint8_t* keyboardState = SDL_GetKeyboardState(nullptr);
 
     uint8_t pressedKey = keyMap[e.keysym.sym];
-    m_Logger->debug(fmt::format("Pressed {} key", pressedKey));
+    SPDLOG_LOGGER_TRACE(m_Logger, "Pressed {} key", pressedKey);
     cpu->setKey(pressedKey, Chip8::KEY_PRESSED_VALUE);
     return pressedKey;
 }
@@ -152,9 +148,9 @@ void Chip8Emulator::run(void)
     clearScreen();
 
     SDL_Event e;
-    bool isQuit = false,
-         isKeyPressed = false;
-    uint8_t pressedKey;
+    bool isQuit = false;
+         // isKeyPressed = false;
+    // uint8_t pressedKey;
     while(not isQuit)
     {
         while (0 != SDL_PollEvent(&e))
@@ -170,8 +166,8 @@ void Chip8Emulator::run(void)
                 case SDL_KEYUP:
                     if (SDL_RELEASED == e.key.state)
                     {
-                        pressedKey = handleKeyPress(e.key);
-                        isKeyPressed = true;
+                        // pressedKey = handleKeyPress(e.key);
+                        // isKeyPressed = true;
                     }
                     break;
 
@@ -187,11 +183,11 @@ void Chip8Emulator::run(void)
 
         cpu->emulateCycle();
 
-        if(isKeyPressed)
-        {
-            isKeyPressed = false;
-            cpu->setKey(pressedKey, Chip8::KEY_NOT_PRESSED_VALUE);
-        }
+        // if(isKeyPressed)
+        // {
+        //     isKeyPressed = false;
+        //     cpu->setKey(pressedKey, Chip8::KEY_NOT_PRESSED_VALUE);
+        // }
 
         if (cpu->isDrw())
         {
@@ -209,7 +205,7 @@ Chip8Emulator::Block::Block(std::shared_ptr<spdlog::logger> logger, std::shared_
     m_Renderer{renderer},
     m_Texture{nullptr, SDL_DestroyTexture}, m_Width{width}, m_Height{height}
 {
-    m_Logger->debug("Creating a block");
+    SPDLOG_LOGGER_TRACE(m_Logger, "Creating a block");
     m_Texture.reset(SDL_CreateTexture(
                 m_Renderer.get(), SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET,
                 m_Width, m_Height)
@@ -226,7 +222,7 @@ Chip8Emulator::Block::Block(std::shared_ptr<spdlog::logger> logger, std::shared_
 void Chip8Emulator::Block::render(int x, int y)
 {
     // std::string msg = fmt::format("Rendering a block at coordinates ({}, {})", x, y);
-    // m_Logger->debug(msg);
+    // SPDLOG_LOGGER_TRACE(m_Logger, msg);
     SDL_Rect dst{x, y, m_Width, m_Height};
     SDL_RenderCopy(m_Renderer.get(), m_Texture.get(), nullptr, &dst);
 }

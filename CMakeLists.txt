@@ -9,7 +9,7 @@ message(STATUS "Project: " ${Project})
 
 set(CMAKE_VERBOSE_MAKEFILE ON)
 set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_C_STANDARD 17)
+set(CMAKE_C_STANDARD 11)
 
 include(FetchContent)
 
@@ -108,6 +108,11 @@ endif()
 
 if (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
+    set(LOG_LEVEL SPDLOG_LEVEL_ERROR)
+else()
+    set(LOG_LEVEL SPDLOG_LEVEL_TRACE)
 endif()
+target_compile_definitions(${Library} PUBLIC SPDLOG_ACTIVE_LEVEL=${LOG_LEVEL})
+target_compile_definitions(${Executable} PRIVATE SPDLOG_ACTIVE_LEVEL=${LOG_LEVEL})
 
 message(STATUS "Build type: " ${CMAKE_BUILD_TYPE})

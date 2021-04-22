@@ -6,7 +6,8 @@
 #include <unordered_map>
 #include <memory>
 #include <bitset>
-#include <spdlog/spdlog.h>
+#include <spdlog/logger.h>
+#include "Bitset2D.txx"
 
 class Chip8
 {
@@ -15,7 +16,7 @@ class Chip8
     static constexpr uint8_t GFX_COLS = 64;
 
     Chip8(std::shared_ptr<spdlog::logger> logger = nullptr);
-    const std::bitset<GFX_ROWS*GFX_COLS>& getGfx(void) const;
+    const Bitset2D<GFX_ROWS, GFX_COLS>& getGfx(void) const;
     uint8_t getLastGeneratedRnd(void) const;
     void loadRom(const std::string& filename);
     void displayState(void) const;
@@ -154,7 +155,7 @@ class Chip8
     std::unordered_map<uint8_t, InstructionHandler> m_opF_tbl;
 
     uint64_t m_CycleCnt;
-    std::vector<bool> m_Keyboard;
+    std::bitset<KEYBOARD_SIZE> m_Keyboard;
     bool m_IsDrw;
     std::array<uint8_t, MEMORY_SIZE_B> m_Memory;
     uint8_t m_SP;
@@ -172,6 +173,6 @@ class Chip8
     uint8_t m_OpId;
     uint8_t m_DelayTimer;
     uint8_t m_SoundTimer;
-    std::bitset<GFX_ROWS*GFX_COLS> m_Gfx;
+    Bitset2D<GFX_ROWS, GFX_COLS> m_Gfx;
     
 };
