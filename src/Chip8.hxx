@@ -17,6 +17,13 @@ using namespace std::chrono_literals;
 class Chip8
 {
     public:
+    typedef struct 
+    {
+        uint8_t row;
+        uint8_t col;
+        bool isOn;
+    } GfxPixelState;
+
     static constexpr uint8_t GFX_ROWS = 32;
     static constexpr uint8_t GFX_COLS = 64;
 
@@ -24,6 +31,7 @@ class Chip8
 
     Chip8(std::shared_ptr<spdlog::logger> logger = nullptr);
     const Bitset2D<GFX_ROWS, GFX_COLS>& getGfx(void) const;
+    const std::vector<GfxPixelState>& getUpdatedPixelsState(void) const;
     uint8_t getLastGeneratedRnd(void) const;
     void loadRom(const std::string& filename);
     void displayState(void) const;
@@ -183,5 +191,6 @@ class Chip8
     uint8_t m_DelayTimer;
     uint8_t m_SoundTimer;
     Bitset2D<GFX_ROWS, GFX_COLS> m_Gfx;
+    std::vector<GfxPixelState> m_UpdatedPixels;
     
 };

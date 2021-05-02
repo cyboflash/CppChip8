@@ -170,6 +170,11 @@ const Bitset2D<Chip8::GFX_ROWS, Chip8::GFX_COLS>& Chip8::getGfx(void) const
     return m_Gfx;
 }
 
+const std::vector<Chip8::GfxPixelState>& Chip8::getUpdatedPixelsState(void) const
+{
+    return m_UpdatedPixels;
+}
+
 uint8_t Chip8::getLastGeneratedRnd(void) const
 {
     return m_rnd;
@@ -566,18 +571,24 @@ void Chip8::op_rnd(void)
 void Chip8::op_drw(void)
 {
     m_V[0xF] = 0;
+    m_UpdatedPixels.clear();
     for (uint8_t spriteRow = 0; spriteRow < m_n; spriteRow++)
     {
         uint8_t spriteByte = m_Memory[m_I + spriteRow];
         for (uint8_t spriteCol = 0; spriteCol < 8; spriteCol++)
         {
             bool spritePixel = (0 == static_cast<uint8_t>(spriteByte & (0x80 >> spriteCol))) ? false : true;
-            unsigned gfxRow = m_V[m_y] + spriteRow;
-            unsigned gfxCol = m_V[m_x] + spriteCol;
+            uint8_t gfxRow = static_cast<uint8_t>(m_V[m_y] + spriteRow);
+            uint8_t gfxCol = static_cast<uint8_t>(m_V[m_x] + spriteCol);
 
             bool oldPixel = m_Gfx(gfxRow, gfxCol);
             bool newPixel = oldPixel xor spritePixel;
             m_Gfx(gfxRow, gfxCol) = newPixel;
+
+            if (oldPixel != newPixel)
+            {
+                m_UpdatedPixels.push_back({.row = gfxRow, .col = gfxCol, .isOn = newPixel});
+            }
 
             if (0 == m_V[0xF])
             {

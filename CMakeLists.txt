@@ -108,11 +108,15 @@ endif()
 
 if (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
-    set(LOG_LEVEL SPDLOG_LEVEL_ERROR)
-else()
+endif()
+
+if  (CMAKE_BUILD_TYPE STREQUAL "Debug")
     set(LOG_LEVEL SPDLOG_LEVEL_TRACE)
+else()
+    set(LOG_LEVEL SPDLOG_LEVEL_ERROR)
 endif()
 target_compile_definitions(${Library} PUBLIC SPDLOG_ACTIVE_LEVEL=${LOG_LEVEL})
 target_compile_definitions(${Executable} PRIVATE SPDLOG_ACTIVE_LEVEL=${LOG_LEVEL})
+message(STATUS "Log level: " ${LOG_LEVEL})
 
 message(STATUS "Build type: " ${CMAKE_BUILD_TYPE})

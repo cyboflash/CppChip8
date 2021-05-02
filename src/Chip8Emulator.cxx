@@ -94,14 +94,11 @@ void Chip8Emulator::drawGfx(void)
 {
     // Gfx drawing can be optimized. We can figure out what blocks
     // have changed and redraw only those blocks.
-    const auto& gfx = cpu->getGfx();
-    for (auto row = 0; row < Chip8::GFX_ROWS; row++)
+    const auto& updatedPixels = cpu->getUpdatedPixelsState();
+    for (const auto& pixel : updatedPixels)
     {
-        for (auto col = 0; col < Chip8::GFX_COLS; col++)
-        {
-                Block *const p_B = (true == gfx(row, col)) ? m_ForegroundBlock.get() : m_BackgroundBlock.get();
-                p_B->render(col*p_B->getWidth(), row*p_B->getHeight());
-        }
+        Block *const p_B = (true == pixel.isOn) ? m_ForegroundBlock.get() : m_BackgroundBlock.get();
+        p_B->render(pixel.col*p_B->getWidth(), pixel.row*p_B->getHeight());
     }
 
     // Update screen
