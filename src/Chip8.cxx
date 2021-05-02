@@ -161,6 +161,7 @@ void Chip8::setKey(uint8_t nbr, bool isPressed)
                 );
         throw std::runtime_error(err);
     }
+    m_PreviousKeyboard[nbr] = m_Keyboard[nbr];
     m_Keyboard[nbr] = isPressed;
 }
 
@@ -261,7 +262,7 @@ uint16_t Chip8::getI(void) const
     return m_I;
 }
 
-bool Chip8::getKey(uint8_t nbr)
+bool Chip8::getKey(uint8_t nbr) const
 {    
     if (nbr >= KEYBOARD_SIZE)
     {
@@ -271,9 +272,20 @@ bool Chip8::getKey(uint8_t nbr)
                 );
         throw std::runtime_error(err);
     }
-    auto value = m_Keyboard[nbr];
-    m_Keyboard[nbr] = KEYBOARD_RESET_VALUE;
-    return value;
+    return m_Keyboard[nbr];
+}
+
+void Chip8::decrementTimers(void)
+{
+    if (0 != m_DelayTimer)
+    {
+        m_DelayTimer--;
+    }
+
+    if (0 != m_SoundTimer)
+    {
+        m_SoundTimer--;
+    }
 }
 
 uint8_t Chip8::getDelayTimer() const
@@ -630,7 +642,10 @@ void Chip8::op_ldk(void)
     bool isPressed = false;
     for (uint8_t i = 0; i < KEYBOARD_SIZE; i++)
     {
-        if (m_Keyboard[i]) 
+        // Based on this post need to check if a key has been released.
+        // For now will not do a timer
+        // https://retrocomputing.stackexchange.com/a/361/21550
+        if ((not m_Keyboard[i]) and m_PreviousKeyboard[i])
         {
             m_V[m_x] = i;
             isPressed = true;
@@ -918,6 +933,7 @@ void Chip8::setupOpFTbl(void)
 void Chip8::resetKeyboard(void)
 {
     m_Keyboard.reset();
+    m_PreviousKeyboard.reset();
 }
 
 void Chip8::reset(void)
@@ -946,6 +962,8 @@ void Chip8::emulateCycle(void)
     fetchOp();
     incrementPC();
     executeOp();
+
+    decrementTimers();
 
     m_CycleCnt++;
 }

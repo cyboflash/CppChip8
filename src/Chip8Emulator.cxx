@@ -1,20 +1,25 @@
-#include <SDL.h>
-#include <fmt/core.h>
 #include <unistd.h>
 #include <exception>
 #include <chrono>
+#include <thread>
 
+#include <SDL.h>
+#include <fmt/core.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/spdlog.h>
 
 #include "Chip8Emulator.hxx"
+
+using namespace std::chrono_literals;
 
 void Chip8Emulator::loadRom(const std::string& romPath)
 {
     cpu->loadRom(romPath);
 }
 
-Chip8Emulator::Chip8Emulator() : 
+Chip8Emulator::Chip8Emulator(unsigned instructionsPerSecond, unsigned cycleSleep_us) : 
+    instructionsPerSecond{instructionsPerSecond},
+    cycleSleep_us{cycleSleep_us},
     m_LoggerName{fmt::format("{}-Chip8Emulator", getpid())}, 
     m_Logger{spdlog::stdout_color_mt(m_LoggerName)},
     m_Window{nullptr, SDL_DestroyWindow}
@@ -87,6 +92,8 @@ Chip8Emulator::~Chip8Emulator()
 
 void Chip8Emulator::drawGfx(void)
 {
+    // Gfx drawing can be optimized. We can figure out what blocks
+    // have changed and redraw only those blocks.
     const auto& gfx = cpu->getGfx();
     for (auto row = 0; row < Chip8::GFX_ROWS; row++)
     {
@@ -96,9 +103,12 @@ void Chip8Emulator::drawGfx(void)
                 p_B->render(col*p_B->getWidth(), row*p_B->getHeight());
         }
     }
+
+    // Update screen
+    SDL_RenderPresent(m_Renderer.get());
 }
 
-uint8_t Chip8Emulator::handleKeyPress(const SDL_KeyboardEvent &e)
+void Chip8Emulator::handleKeyboard(const SDL_Event &e)
 {
     // 1 2 3 4        1 2 3 C
     // Q W E R  --->  4 5 6 D
@@ -124,10 +134,12 @@ uint8_t Chip8Emulator::handleKeyPress(const SDL_KeyboardEvent &e)
 
     // uint8_t* keyboardState = SDL_GetKeyboardState(nullptr);
 
-    uint8_t pressedKey = keyMap[e.keysym.sym];
+    uint8_t pressedKey = keyMap[e.key.keysym.sym];
+
     SPDLOG_LOGGER_TRACE(m_Logger, "Pressed {} key", pressedKey);
-    cpu->setKey(pressedKey, Chip8::KEY_PRESSED_VALUE);
-    return pressedKey;
+
+    cpu->setKey(pressedKey, (e.type == SDL_KEYDOWN) ? 
+            Chip8::KEY_PRESSED_VALUE : Chip8::KEY_NOT_PRESSED_VALUE);
 }
 
 void Chip8Emulator::clearScreen(void)
@@ -142,38 +154,54 @@ void Chip8Emulator::clearScreen(void)
     SDL_RenderClear(m_Renderer.get());
 }
 
-typedef std::chrono::nanoseconds ClockResolution;
 void Chip8Emulator::run(void)
 {
     clearScreen();
 
     SDL_Event e;
     bool isQuit = false;
-         // isKeyPressed = false;
-    // uint8_t pressedKey;
+    
+    auto nextExecutionTime = std::chrono::high_resolution_clock::now();
+    auto prevTime = nextExecutionTime;
     while(not isQuit)
     {
-        while (0 != SDL_PollEvent(&e))
+        auto currTime = std::chrono::high_resolution_clock::now();
+        if (currTime >= nextExecutionTime)
         {
-            switch (e.type)
+            nextExecutionTime = currTime + 1s;
+            for(decltype(instructionsPerSecond) cnt = 0; cnt < instructionsPerSecond;  cnt++)
             {
-                case SDL_QUIT:
-                    isQuit = true;
-                    break;
-
-                    // https://retrocomputing.stackexchange.com/a/361
-                    // https://retrocomputing.stackexchange.com/questions/358/how-are-held-down-keys-handled-in-chip-8/361#361
-                case SDL_KEYUP:
-                    if (SDL_RELEASED == e.key.state)
+                while (0 != SDL_PollEvent(&e))
+                {
+                    switch (e.type)
                     {
-                        // pressedKey = handleKeyPress(e.key);
-                        // isKeyPressed = true;
-                    }
-                    break;
+                        case SDL_QUIT:
+                            isQuit = true;
+                            break;
 
-                default:
+                        case SDL_KEYDOWN:
+                        case SDL_KEYUP:
+                            handleKeyboard(e);
+                            break;
+
+                        default:
+                            break;
+                    }
+                }
+
+                if (isQuit)
+                {
                     break;
+                }
+
+                cpu->emulateCycle();
+
+                if (cpu->isDrw())
+                {
+                    drawGfx();
+                }
             }
+            currTime = std::chrono::high_resolution_clock::now();
         }
 
         if (isQuit)
@@ -181,21 +209,13 @@ void Chip8Emulator::run(void)
             break;
         }
 
-        cpu->emulateCycle();
-
-        // if(isKeyPressed)
-        // {
-        //     isKeyPressed = false;
-        //     cpu->setKey(pressedKey, Chip8::KEY_NOT_PRESSED_VALUE);
-        // }
-
-        if (cpu->isDrw())
+        if ((currTime - prevTime) >= cpu->TIMER_PERIOD_mS)
         {
-            drawGfx();
+            cpu->decrementTimers();
+            prevTime = currTime;
         }
 
-        // Update screen
-        SDL_RenderPresent(m_Renderer.get());
+        std::this_thread::sleep_until(currTime + std::chrono::microseconds(cycleSleep_us));
     }
 }
 

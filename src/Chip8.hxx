@@ -7,13 +7,20 @@
 #include <memory>
 #include <bitset>
 #include <spdlog/logger.h>
+#include <chrono>
+    
 #include "Bitset2D.txx"
+
+
+using namespace std::chrono_literals;
 
 class Chip8
 {
     public:
     static constexpr uint8_t GFX_ROWS = 32;
     static constexpr uint8_t GFX_COLS = 64;
+
+    static constexpr std::chrono::duration<float> TIMER_PERIOD_mS = 16.667ms;
 
     Chip8(std::shared_ptr<spdlog::logger> logger = nullptr);
     const Bitset2D<GFX_ROWS, GFX_COLS>& getGfx(void) const;
@@ -34,10 +41,11 @@ class Chip8
     const std::stack<uint16_t>& getStack() const;
     uint8_t getV(uint8_t nbr) const;
     uint16_t getI(void) const;
-    bool getKey(uint8_t nbr);
+    bool getKey(uint8_t nbr) const;
     void setKey(uint8_t nbr, bool isPressed);
-    uint8_t getDelayTimer() const;
-    uint8_t getSoundTimer() const;
+    uint8_t getDelayTimer(void) const;
+    uint8_t getSoundTimer(void) const;
+    void decrementTimers(void);
 
     void emulateCycle(void);
 
@@ -156,6 +164,7 @@ class Chip8
 
     uint64_t m_CycleCnt;
     std::bitset<KEYBOARD_SIZE> m_Keyboard;
+    std::bitset<KEYBOARD_SIZE> m_PreviousKeyboard;
     bool m_IsDrw;
     std::array<uint8_t, MEMORY_SIZE_B> m_Memory;
     uint8_t m_SP;
