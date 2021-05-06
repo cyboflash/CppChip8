@@ -8,6 +8,7 @@
 #include <bitset>
 #include <spdlog/logger.h>
 #include <chrono>
+#include <mutex>
     
 #include "Bitset2D.txx"
 
@@ -51,8 +52,8 @@ class Chip8
     uint16_t getI(void) const;
     bool getKey(uint8_t nbr) const;
     void setKey(uint8_t nbr, bool isPressed);
-    uint8_t getDelayTimer(void) const;
-    uint8_t getSoundTimer(void) const;
+    uint8_t getDelayTimer(void);
+    uint8_t getSoundTimer(void);
     void decrementTimers(void);
 
     void emulateCycle(void);
@@ -78,6 +79,7 @@ class Chip8
     static constexpr bool KEYBOARD_RESET_VALUE = KEY_NOT_PRESSED_VALUE;
 
     private:
+
     // https://github.com/gabime/spdlog/wiki/2.-Creating-loggers
     std::string m_LoggerName;
     std::shared_ptr<spdlog::logger> m_Logger;
@@ -188,8 +190,8 @@ class Chip8
     uint8_t m_rnd;
     uint16_t m_nnn;
     uint8_t m_OpId;
-    uint8_t m_DelayTimer;
-    uint8_t m_SoundTimer;
+    std::atomic<uint8_t> m_DelayTimer;
+    std::atomic<uint8_t> m_SoundTimer;
     Bitset2D<GFX_ROWS, GFX_COLS> m_Gfx;
     std::vector<GfxPixelState> m_UpdatedPixels;
     

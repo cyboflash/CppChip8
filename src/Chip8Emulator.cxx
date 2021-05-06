@@ -2,6 +2,7 @@
 #include <exception>
 #include <chrono>
 #include <thread>
+#include <cmath>
 
 #include <SDL.h>
 #include <fmt/core.h>
@@ -17,9 +18,9 @@ void Chip8Emulator::loadRom(const std::string& romPath)
     cpu->loadRom(romPath);
 }
 
-Chip8Emulator::Chip8Emulator(unsigned instructionsPerSecond, unsigned cycleSleep_us) : 
-    instructionsPerSecond{instructionsPerSecond},
-    cycleSleep_us{cycleSleep_us},
+Chip8Emulator::Chip8Emulator(unsigned clkHz, unsigned cycleSleep_ms) : 
+    m_ClkHz{clkHz},
+    m_CycleSleep_ms{cycleSleep_ms},
     m_LoggerName{fmt::format("{}-Chip8Emulator", getpid())}, 
     m_Logger{spdlog::stdout_color_mt(m_LoggerName)},
     m_Window{nullptr, SDL_DestroyWindow}
@@ -92,8 +93,6 @@ Chip8Emulator::~Chip8Emulator()
 
 void Chip8Emulator::drawGfx(void)
 {
-    // Gfx drawing can be optimized. We can figure out what blocks
-    // have changed and redraw only those blocks.
     const auto& updatedPixels = cpu->getUpdatedPixelsState();
     for (const auto& pixel : updatedPixels)
     {
@@ -151,69 +150,76 @@ void Chip8Emulator::clearScreen(void)
     SDL_RenderClear(m_Renderer.get());
 }
 
-void Chip8Emulator::run(void)
+
+void Chip8Emulator::runTimers(void)
+{
+    while (true)
+    {
+        cpu->decrementTimers();
+        std::this_thread::sleep_for(Chip8::TIMER_PERIOD_mS);
+    }
+}
+
+void Chip8Emulator::emulate(void)
 {
     clearScreen();
 
     SDL_Event e;
-    bool isQuit = false;
     
-    auto nextExecutionTime = std::chrono::high_resolution_clock::now();
-    auto prevTime = nextExecutionTime;
-    while(not isQuit)
+    auto prevTime = std::chrono::high_resolution_clock::now();
+    while(true)
     {
         auto currTime = std::chrono::high_resolution_clock::now();
-        if (currTime >= nextExecutionTime)
+        auto delta = std::chrono::duration<float>(currTime - prevTime);
+        auto instructionCount = std::lroundf(delta.count()*static_cast<float>(m_ClkHz));
+        prevTime = currTime;
+        SPDLOG_LOGGER_TRACE(m_Logger, fmt::format("Instruction count: {}", instructionCount));
+        for(decltype(instructionCount) cnt = 0; cnt < instructionCount; cnt++)
         {
-            nextExecutionTime = currTime + 1s;
-            for(decltype(instructionsPerSecond) cnt = 0; cnt < instructionsPerSecond;  cnt++)
+            while (0 != SDL_PollEvent(&e))
             {
-                while (0 != SDL_PollEvent(&e))
+                switch (e.type)
                 {
-                    switch (e.type)
-                    {
-                        case SDL_QUIT:
-                            isQuit = true;
-                            break;
+                    case SDL_QUIT:
+                        goto Chip8Emulator_run_exit;
+                        break;
 
-                        case SDL_KEYDOWN:
-                        case SDL_KEYUP:
-                            handleKeyboard(e);
-                            break;
+                    case SDL_KEYDOWN:
+                    case SDL_KEYUP:
+                        handleKeyboard(e);
+                        break;
 
-                        default:
-                            break;
-                    }
-                }
-
-                if (isQuit)
-                {
-                    break;
-                }
-
-                cpu->emulateCycle();
-
-                if (cpu->isDrw())
-                {
-                    drawGfx();
+                    default:
+                        break;
                 }
             }
-            currTime = std::chrono::high_resolution_clock::now();
+
+            cpu->emulateCycle();
+
+            if (cpu->isDrw())
+            {
+                drawGfx();
+            }
         }
 
-        if (isQuit)
-        {
-            break;
-        }
-
-        if ((currTime - prevTime) >= cpu->TIMER_PERIOD_mS)
-        {
-            cpu->decrementTimers();
-            prevTime = currTime;
-        }
-
-        std::this_thread::sleep_until(currTime + std::chrono::microseconds(cycleSleep_us));
+        std::this_thread::sleep_for(std::chrono::microseconds(m_CycleSleep_ms));
     }
+
+// This might be a contreversial but I think going with goto might be
+// a good idea. Makes the code a little cleaner. As 
+// long as we are moving down the code and not up.  
+// At least that's the rule in Linux kernel.
+Chip8Emulator_run_exit:;
+}
+
+void Chip8Emulator::run(void)
+{
+    auto emulationThread = std::thread(&Chip8Emulator::emulate, this);
+    auto timerThread = std::thread(&Chip8Emulator::runTimers, this);
+
+    timerThread.detach();
+    emulationThread.join();
+    
 }
 
 Chip8Emulator::Block::Block(std::shared_ptr<spdlog::logger> logger, std::shared_ptr<SDL_Renderer> renderer,

@@ -42,6 +42,22 @@ endif()
 message(STATUS "spdlog_SOURCE_DIR = ${spdlog_SOURCE_DIR}")
 message(STATUS "spdlog_BINARY_DIR = ${spdlog_BINARY_DIR}")
 
+FetchContent_Declare(
+    cxxopts
+    GIT_REPOSITORY https://github.com/jarro2783/cxxopts
+    GIT_TAG        v2.2.1
+    )
+if (NOT cxxopts_POPULATED)
+    FetchContent_Populate(cxxopts)
+    set(CXXOPTS_BUILD_EXAMPLES OFF)
+    set(CXXOPTS_BUILD_TESTS OFF)
+    set(CXXOPTS_ENABLE_INSTALL OFF)
+
+    include_directories(${cxxopts_SOURCE_DIR}/include ${cxxopts_BINARY_DIR})
+endif()
+message(STATUS "cxxopts_SOURCE_DIR = ${cxxopts_SOURCE_DIR}")
+message(STATUS "cxxopts_BINARY_DIR = ${cxxopts_BINARY_DIR}")
+
 # FetchContent_Declare(
 #     sdl
 #     GIT_REPOSITORY https://github.com/libsdl-org/SDL.git
@@ -82,10 +98,12 @@ set(LibrarySources
     )
 
 set(ExecutableSources ${SourceDir}/main.cxx)
-set(CompilationFlags -Wall -Werror -Wextra -Wpedantic -Wconversion -Wundef -fmax-errors=3)
+# Temporarily get rid of -Wconversion. cxxopts module doesn't compile with it
+# set(CompilationFlags -Wall -Werror -Wextra -Wpedantic -Wconversion -Wundef -fmax-errors=3)
+set(CompilationFlags -Wall -Werror -Wextra -Wpedantic -Wundef -fmax-errors=3)
 set(LinkLibraries fmt::fmt ${SDL2_LIBRARIES} spdlog::spdlog)
 
-set(Executable ${Project}-main)
+set(Executable ${Project}-emulator)
 set(Library ${Project})
 
 add_library(${Library} ${LibrarySources})

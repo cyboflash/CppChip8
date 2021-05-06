@@ -293,12 +293,12 @@ void Chip8::decrementTimers(void)
     }
 }
 
-uint8_t Chip8::getDelayTimer() const
+uint8_t Chip8::getDelayTimer()
 {
     return m_DelayTimer;
 }
 
-uint8_t Chip8::getSoundTimer() const
+uint8_t Chip8::getSoundTimer()
 {
     return m_SoundTimer;
 }
@@ -653,9 +653,9 @@ void Chip8::op_ldk(void)
     bool isPressed = false;
     for (uint8_t i = 0; i < KEYBOARD_SIZE; i++)
     {
+        // https://retrocomputing.stackexchange.com/a/361/21550
         // Based on this post need to check if a key has been released.
         // For now will not do a timer
-        // https://retrocomputing.stackexchange.com/a/361/21550
         if ((not m_Keyboard[i]) and m_PreviousKeyboard[i])
         {
             m_V[m_x] = i;

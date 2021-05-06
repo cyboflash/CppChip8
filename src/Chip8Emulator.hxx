@@ -13,20 +13,20 @@ struct SDL_RendererDeleter
 class Chip8Emulator
 {
     public:
-        static constexpr unsigned DEFAULT_INSTRUCTIONS_PER_SECOND = 540;
-        static constexpr unsigned DEFAULT_CYCLE_SLEEP_uS = 100;
+        static constexpr unsigned DEFAULT_CLK_HZ = 540;
+        static constexpr unsigned DEFAULT_CYCLE_SLEEP_mS = 100;
 
         Chip8Emulator(
-                unsigned instructionsPerSecond = DEFAULT_INSTRUCTIONS_PER_SECOND, 
-                unsigned cycleSleep_us = DEFAULT_CYCLE_SLEEP_uS
+                unsigned clkHz = DEFAULT_CLK_HZ, 
+                unsigned cycleSleep_ms = DEFAULT_CYCLE_SLEEP_mS
                 );
         ~Chip8Emulator();
         void run(void);
         void loadRom(const std::string& romPath);
 
     private:
-        unsigned instructionsPerSecond;
-        unsigned cycleSleep_us;
+        unsigned m_ClkHz;
+        unsigned m_CycleSleep_ms;
                                                                                               //cols, rows
         static constexpr std::pair<uint32_t, uint32_t> SCREEN_SIZE_1280x1024 = std::make_pair(1280, 1024);
         static constexpr SDL_Color BACKGROUND_COLOR = {0, 0, 0, 255}; //Black
@@ -59,6 +59,8 @@ class Chip8Emulator
         void drawGfx(void);
         void clearScreen(void);
         void handleKeyboard(const SDL_Event &e);
+        void emulate(void);
+        void runTimers(void);
 
         std::unique_ptr<Block> m_BackgroundBlock;
         std::unique_ptr<Block> m_ForegroundBlock;
