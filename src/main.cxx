@@ -19,7 +19,9 @@ int main(int argc, char** argv)
          cxxopts::value<unsigned>()->default_value(
              std::to_string(Chip8Emulator::DEFAULT_CYCLE_SLEEP_mS)))
         ("h,help", "Display usage")
+        ("rom-path", "Full path to rom", cxxopts::value<std::string>())
         ;
+    options.positional_help("<full path to rom>");
 
     options.parse_positional({"rom-path"});
 

@@ -202,7 +202,7 @@ void Chip8Emulator::emulate(void)
             }
         }
 
-        std::this_thread::sleep_for(std::chrono::microseconds(m_CycleSleep_ms));
+        std::this_thread::sleep_for(std::chrono::milliseconds(m_CycleSleep_ms));
     }
 
 // This might be a contreversial but I think going with goto might be
