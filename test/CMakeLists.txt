@@ -19,10 +19,11 @@ macro(package_add_test TESTNAME)
     # create an exectuable in which the tests will be stored
     add_executable(${TESTNAME} ${ARGN})
     set_property(TARGET ${TESTNAME} PROPERTY CXX_STANDARD 20)
-    target_include_directories(${TESTNAME} PRIVATE ${CMAKE_SOURCE_DIR}/src)
+    target_include_directories(${TESTNAME} PRIVATE ${CMAKE_SOURCE_DIR}/src 
+        ${fmt_SOURCE_DIR}/include ${spdlog_SOURCE_DIR/include})
     # link the Google test infrastructure, mocking library, and a default main fuction to
     # the test executable.  Remove g_test_main if writing your own main function.
-    target_link_libraries(${TESTNAME} gtest gmock gtest_main chip-8)
+    target_link_libraries(${TESTNAME} gtest gmock gtest_main ${Library} fmt::fmt spdlog::spdlog)
     # gtest_discover_tests replaces gtest_add_tests,
     # see https://cmake.org/cmake/help/v3.10/module/GoogleTest.html for more options to pass to it
     gtest_discover_tests(${TESTNAME}
