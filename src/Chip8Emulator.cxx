@@ -96,6 +96,10 @@ void Chip8Emulator::drawGfx(void)
     const auto& updatedPixels = cpu->getUpdatedPixelsState();
     for (const auto& pixel : updatedPixels)
     {
+        SPDLOG_LOGGER_TRACE(m_Logger,
+                fmt::format("Rendering pixel x: {}, y: {}, active: {}", 
+                    pixel.col, pixel.row, pixel.isOn)
+                );
         Block *const p_B = (true == pixel.isOn) ? m_ForegroundBlock.get() : m_BackgroundBlock.get();
         p_B->render(pixel.col*p_B->getWidth(), pixel.row*p_B->getHeight());
     }
@@ -127,8 +131,6 @@ void Chip8Emulator::handleKeyboard(const SDL_Event &e)
         {SDLK_j, 7  }, {SDLK_k, 8}, {SDLK_l, 9      }, {SDLK_SEMICOLON, 0xE},
         {SDLK_n, 0xA}, {SDLK_m, 0}, {SDLK_COMMA, 0xB}, {SDLK_PERIOD, 0xF   }
     };
-
-    // uint8_t* keyboardState = SDL_GetKeyboardState(nullptr);
 
     uint8_t pressedKey = keyMap[e.key.keysym.sym];
 
@@ -205,9 +207,9 @@ void Chip8Emulator::emulate(void)
         std::this_thread::sleep_for(std::chrono::milliseconds(m_CycleSleep_ms));
     }
 
-// This might be a contreversial but I think going with goto might be
-// a good idea. Makes the code a little cleaner. As 
-// long as we are moving down the code and not up.  
+// This might be a bit contreversial but I think going with goto might be
+// a better idea. IMHO makes the code a little easier to read. As 
+// long as goto points the code below not above it.  
 // At least that's the rule in Linux kernel.
 Chip8Emulator_run_exit:;
 }
@@ -244,8 +246,9 @@ Chip8Emulator::Block::Block(std::shared_ptr<spdlog::logger> logger, std::shared_
 
 void Chip8Emulator::Block::render(int x, int y)
 {
-    // std::string msg = fmt::format("Rendering a block at coordinates ({}, {})", x, y);
-    // SPDLOG_LOGGER_TRACE(m_Logger, msg);
+    SPDLOG_LOGGER_TRACE(m_Logger, 
+            fmt::format("Rendering block at coordinates ({}, {})", x, y)
+            );
     SDL_Rect dst{x, y, m_Width, m_Height};
     SDL_RenderCopy(m_Renderer.get(), m_Texture.get(), nullptr, &dst);
 }

@@ -10,7 +10,6 @@
 int main(int argc, char** argv)
 {
     cxxopts::Options options(std::string{argv[0]}, "Chip 8 Emulator");
-
     options.add_options()
         ("c,clk-hz", "Clock frequency in herz", 
          cxxopts::value<unsigned>()->default_value(
@@ -22,15 +21,12 @@ int main(int argc, char** argv)
         ("rom-path", "Full path to rom", cxxopts::value<std::string>())
         ;
     options.positional_help("<full path to rom>");
-
     options.parse_positional({"rom-path"});
-
     auto result = options.parse(argc, argv);
-
     auto romPathCount = result.count("rom-path");
-    if (result.count("help") or (0 == romPathCount) or (romPathCount > 1))
+    if ((result.count("help") >= 1) or (1 != romPathCount))
     {
-        std::cout << options.help() << std::endl;
+        std::cerr << options.help() << std::endl;
         std::exit(0);
     }
 

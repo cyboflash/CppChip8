@@ -16,9 +16,15 @@
 
 #include "Chip8.hxx"
 
-// TODO
-// 1. use fmt::format instead of formating cout through std:: and iomanip
-// 2. use spdlog for logging and not cout/cerr
+/* Chip 8 CPU
+ * Note 1: 
+     Why use lambda expression instead of just creating a strig and printing it?
+     If we are compiling with a level above trace then according to spdlog 
+     documenation trace level macros are not compiled into the code, i.e. removed. 
+     By using lambda I'm embedding code into the macro which depending on the 
+     logging level will either be present or not compiled into the final binary.
+     Essentially I'm removing logging from the code when I don't need it.
+ * */
 
 const std::vector<std::vector<uint8_t>> Chip8::FONT_SPRITES = 
 {
@@ -574,13 +580,19 @@ void Chip8::op_drw(void)
     m_UpdatedPixels.clear();
     for (uint8_t spriteRow = 0; spriteRow < m_n; spriteRow++)
     {
+        SPDLOG_LOGGER_TRACE(m_Logger, fmt::format("Accessing memory[0x{addr:X}, {addr}]", 
+                    fmt::arg("addr", m_I + spriteRow)));
         uint8_t spriteByte = m_Memory[m_I + spriteRow];
         for (uint8_t spriteCol = 0; spriteCol < 8; spriteCol++)
         {
             bool spritePixel = (0 == static_cast<uint8_t>(spriteByte & (0x80 >> spriteCol))) ? false : true;
-            uint8_t gfxRow = static_cast<uint8_t>(m_V[m_y] + spriteRow);
-            uint8_t gfxCol = static_cast<uint8_t>(m_V[m_x] + spriteCol);
+            SPDLOG_LOGGER_TRACE(m_Logger, 
+                    fmt::format("Accessing registers {} and {}", m_y, m_x));
+            uint8_t gfxRow = static_cast<uint8_t>((m_V[m_y] + spriteRow) % GFX_ROWS);
+            uint8_t gfxCol = static_cast<uint8_t>((m_V[m_x] + spriteCol) % GFX_COLS);
 
+            SPDLOG_LOGGER_TRACE(m_Logger, 
+                    "Accessing graphics pixel at row: {} and col: {}", gfxRow, gfxCol);
             bool oldPixel = m_Gfx(gfxRow, gfxCol);
             bool newPixel = oldPixel xor spritePixel;
             m_Gfx(gfxRow, gfxCol) = newPixel;
@@ -974,8 +986,6 @@ void Chip8::emulateCycle(void)
     incrementPC();
     executeOp();
 
-    decrementTimers();
-
     m_CycleCnt++;
 }
 
@@ -983,7 +993,7 @@ void Chip8::executeOp(void)
 {
     try
     {
-        displayOp();
+        displayState();
         (this->*m_op_tbl.at(m_OpId))();
     }
     catch (const std::out_of_range &e)
@@ -1116,14 +1126,14 @@ void Chip8::displayOp(void) const
 {
     SPDLOG_LOGGER_TRACE(m_Logger, 
             fmt::format(
-                "m_op: 0x{:>04X}\n"
-                "m_OpId: 0x{:>01X}"
+                "m_op: 0x{:>04X}"
+                ", m_OpId: 0x{:>01X}"
                 ", m_x: 0x{:>01X}"
                 ", m_y: 0x{:>01X}"
                 ", m_n: 0x{:>01X}"
                 ", m_kk: 0x{:>02X}"
-                ", m_nnn: 0x{:>03X}\n"
-                ,m_op 
+                ", m_nnn: 0x{:>03X}"
+                , m_op 
                 , m_OpId
                 , m_x
                 , m_y
@@ -1136,75 +1146,85 @@ void Chip8::displayOp(void) const
 
 void Chip8::displayRegisters(void) const
 {
-    std::cout << fmt::format("PC = 0x{:>03X}\n", m_PC);
-    std::cout << fmt::format("SP = {}\n\n", m_SP);
-    for (decltype(m_V.size()) i = 0; i < m_V.size(); i++)
-    {
-        std::cout << fmt::format("V[0x{:>01X}] = 0x{:>02X}\n", i, m_V[i]);
-    }
+    SPDLOG_LOGGER_TRACE
+    (
+        m_Logger,
+        // See Note 1 in the beginning on this file to read on why I'm using lambda here.
+        [&]()
+        {
+            std::string result = fmt::format(fmt::format("\nPC = 0x{:>03X}", m_PC));
+            result += fmt::format("\nSP = {}", m_SP);
+            for (decltype(m_V.size()) i = 0; i < m_V.size(); i++)
+            {
+                result += fmt::format("\nV[0x{:>01X}] = 0x{:>02X}", i, m_V[i]);
+            }
+            // remove last character, new line, '\n'
+            result.pop_back();
+            return result;
+        }()
+    );
 }
 
 void Chip8::displayState(void) const
 {
-    std::cout << fmt::format("Cycle: {}\n\n", m_CycleCnt);
     displayOp();
-    std::cout << "\n";
     displayRegisters();
+    displayMemoryContents();
 }
 
-void Chip8::displayMemoryContents(uint16_t startAddr, uint16_t endAddr) const
+// When code is compiled for release the logging macro is eliminated, which in turn
+// makes function arguments not used by anything. This in turn generates an error:
+// error: unused parameter [-Werror=unused-parameter]. Hence the use of [[maybe_unused]]
+// attribute.
+void Chip8::displayMemoryContents(
+        [[maybe_unused]] uint16_t startAddr, 
+        [[maybe_unused]] uint16_t endAddr) const
 {
-    if ((startAddr > PROGRAM_END_ADDR) or (endAddr > PROGRAM_END_ADDR))
-    {
-        throw std::runtime_error("startAddr or endAddr is greater than memory size");
-    }
-
-    // save the stream state
-    std::ios_base::fmtflags flags(std::cout.flags());
-    auto originalWidth = std::cout.width();
-    auto originalFill = std::cout.fill(); 
-
-    // display header
-    uint16_t nearestQuotientInteger = static_cast<uint16_t>((startAddr/16) * 16);
-    std::cout << "        ";
-    std::cout << std::uppercase << std::right << std::hex;
-    for (auto i = 0; i < 16; i++)
-    {
-        std::cout << "0x" << std::setfill('0') << std::setw(2) << i << " ";
-    }
-    std::cout << std::setw(0) << "\n      +-";
-    std::cout << std::string(16*4 + 15, '-');
-
-    // https://stackoverflow.com/a/19760152/1636521 
-    uint16_t remainder = startAddr & (16 - 1);
-
-    if (nearestQuotientInteger != startAddr)
-    {
-        std::cout << std::setw(0) << "\n";
-        std::cout << "0x" << std::setfill('0') << std::setw(3) << nearestQuotientInteger << " | ";
-        for (auto i = 0; i < remainder; i++)
+    SPDLOG_LOGGER_TRACE
+    (
+        m_Logger, 
+        // See Note 1 in the beginning on this file to read on why I'm using lambda here.
+        [&]()
         {
-            std::cout << "     ";
-        }
-    }
+            if ((startAddr > PROGRAM_END_ADDR) or (endAddr > PROGRAM_END_ADDR))
+            {
+                throw std::runtime_error(
+                        "startAddr or endAddr is greater than memory size");
+            }
 
-    std::cout << std::setfill('0') << std::setw(2);
-    for (uint16_t i = startAddr; i <= endAddr; i++)
-    {
-        // figure out if we need to display the address 
-        if (0 == (i & (16 - 1)))
-        {
-            std::cout << std::setw(0) << "\n";
-            std::cout << "0x" << std::setfill('0') << std::setw(3) << i << " | ";
-            std::cout << std::setw(2);
-        }
-        // display memory contents
-        std::cout << "0x" <<  static_cast<unsigned>(m_Memory[i]) << " ";
-    }
-    std::cout << std::setw(0) << "\n";
+            // display header
+            uint16_t nearestQuotientInteger = static_cast<uint16_t>((startAddr/16) * 16);
+            std::string result = "\n        ";
+            for (auto i = 0; i < 16; i++)
+            {
+                result += fmt::format("0x{:02X} ", i);
+            }
+            result += "\n      +-";
+            result += std::string(16*4 + 15, '-');
 
-    // restore the stream state
-    std::cout.fill(originalFill);
-    std::cout.width(originalWidth);
-    std::cout.flags(flags); 
+            // https://stackoverflow.com/a/19760152/1636521 
+            uint16_t remainder = startAddr & (16 - 1);
+            if (nearestQuotientInteger != startAddr)
+            {
+                result += fmt::format("\n0x{:03X} | ", nearestQuotientInteger);
+                for (auto i = 0; i < remainder; i++)
+                {
+                    result += "     ";
+                }
+            }
+
+            for (uint16_t i = startAddr; i <= endAddr; i++)
+            {
+                // figure out if we need to display the address 
+                if (0 == (i & (16 - 1)))
+                {
+                    result += fmt::format("\n0x{:03X} | ", i);
+                }
+
+                // display memory contents
+                result += fmt::format("0x{:02X} ", m_Memory[i]);
+            }
+            return result;
+        }()
+    );
 }
